@@ -1,0 +1,86 @@
+{
+	"comment": "THIS DATA IS MOSTLY MADE UP.  It's just here to show structure, the leaf nodes don't actually make sense, which is why the gains jump and there is only a few nodes on 1 tree.  Also this comment field doesn't actually exist in the real data but you can't have comments in JSON",
+    "name": "tree",
+    "version": "v3",
+    "num_class": 1,
+    "num_tree_per_iteration": 1,
+    "label_index": 0,
+    "max_feature_idx": 86,
+    "average_output": false,
+    "objective": "regression",
+    "feature_names": [
+        "Column_0",
+        "Column_1",
+        "..."
+    ],
+  	"monotone_constraints": [],
+  	"tree_info": [
+		{
+			"tree_index": 0,
+			"num_leaves": 128,
+			"num_cat": 0,
+			"shrinkage": 0.15,
+			"tree_structure": {
+				"split_index": 0,
+				"split_feature": 0,
+				"split_gain": 5796.2001953125,
+				"threshold": 1.0000000180025095e-35,
+				"decision_type": "<=",
+				"default_left": true,
+				"missing_type": "None",
+				"internal_value": 0,
+				"internal_weight": 0,
+				"internal_count": 756271,
+				"left_child": {
+					"split_index": 1,
+					"split_feature": 70,
+					"split_gain": 7108.22998046875,
+					"threshold": 1.0000000180025095e-35,
+					"decision_type": "<=",
+					"default_left": true,
+					"missing_type": "None",
+					"internal_value": 0.0875516,
+					"internal_weight": 377903,
+					"internal_count": 377903,
+					"left_child": {
+					  "leaf_index": 0,
+					  "leaf_value": 0.019435662238625723,
+					  "leaf_weight": 73697,
+					  "leaf_count": 73697
+					},
+					"right_child": {
+					  "leaf_index": 83,
+					  "leaf_value": 0.05490100616682895,
+					  "leaf_weight": 9243,
+					  "leaf_count": 9243
+					}
+				},
+				"right_child": {
+					"split_index": 1,
+					"split_feature": 70,
+					"split_gain": 7108.22998046875,
+					"threshold": 1.0000000180025095e-35,
+					"decision_type": "<=",
+					"default_left": true,
+					"missing_type": "None",
+					"internal_value": 0.0875516,
+					"internal_weight": 377903,
+					"internal_count": 377903,
+					"left_child": {
+					  "leaf_index": 0,
+					  "leaf_value": 0.019435662238625723,
+					  "leaf_weight": 73697,
+					  "leaf_count": 73697
+					},
+					"right_child": {
+					  "leaf_index": 83,
+					  "leaf_value": 0.05490100616682895,
+					  "leaf_weight": 9243,
+					  "leaf_count": 9243
+					}
+				}
+			}
+        }
+    ],
+    "pandas_categorical": null
+}
