@@ -321,9 +321,15 @@ class GBDTValue:
         # bagging_fractions = [.05, .1, .2, .3, .4]
         # bagging_freqs = [5, 10, 20, 30]
         # num_leaves_choices = [2**7, 2**8, 2**9, 2**10, 2**11]
-        bagging_fractions = [.3]
-        bagging_freqs = [20]
-        num_leaves_choices = [2**11]
+
+        # Best, but treelite trains too slow
+        # bagging_fractions = [.3]
+        # bagging_freqs = [20]
+        # num_leaves_choices = [2**11]
+
+        bagging_fractions = [.2]
+        bagging_freqs = [10]
+        num_leaves_choices = [2**8]
         for (
             bagging_fraction,
             bagging_freq,
