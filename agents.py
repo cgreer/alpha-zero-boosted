@@ -11,12 +11,15 @@ import settings
 import time
 
 
+# XXX: move to value/policy models
 class UnopinionatedValue:
 
     def predict(self, features):
-        return 0.0
+        # :features ~ [(0, 1, ...), ...]
+        return (0.0,) * len(features)
 
 
+# XXX: move to value/policy models
 class UniformPolicy:
 
     def predict(self, features, allowable_actions):
@@ -238,8 +241,10 @@ class MCTSAgent(Agent):
         else:
             allowable_actions = self.environment.enumerate_actions(state)
 
+            # XXX: replace with one call to feature_extractor that just gets features for all agents
+            # at the same time.  Pass in num_agents.
             agent_features = [self.feature_extractor(state, agent.agent_num) for agent in self.environment.agents]
-            values = tuple(self.value_model.predict(features) for features in agent_features)
+            values = tuple(self.value_model.predict(agent_features))
 
             # XXX: You may only ever only need self.agent_num's policy for this if you want to save
             # some time here.

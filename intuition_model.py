@@ -151,11 +151,15 @@ class NaiveValue:
         print("MAE (random):", mean_absolute_error_random)
 
     def predict(self, features):
-        try:
-            return self.state_wins[tuple(features)] / self.state_visits[tuple(features)]
-        except (KeyError, ZeroDivisionError):
-            # XXX: How is there a ZeroDivisionError but not a key error
-            return 0
+        # :features ~ [(0, 1, ...), ...]
+        values = []
+        for board_features in features:
+            try:
+                values.append(self.state_wins[tuple(features)] / self.state_visits[tuple(features)])
+            except (KeyError, ZeroDivisionError):
+                # XXX: How is there a ZeroDivisionError but not a key error
+                values.append(0)
+        return tuple(values)
 
 
 @dataclass
@@ -375,16 +379,13 @@ class GBDTValue:
         # Load up the just-made treelite model for use
         self.load(self.treelite_model_path)
 
-    def predict(self, features, batch_mode=False):
+    def predict(self, features) -> numpy.array:
+        # :features ~ [features_1, features_2, ...]
+        # :features ~ [(1, 0, ...), (0, 1, ...), ...]
         # XXX: change agent code to be numpy arrays?
-        if batch_mode:
-            batch = TreeliteBatch.from_npy2d(features)
-            return self.treelite_predictor.predict(batch)
-        else:
-            # Note that Predictor returns 0 dimensional nd array when only one value in batch
-            # - So you need to call item(0) to get back the scalar value
-            batch = TreeliteBatch.from_npy2d(numpy.array([features], dtype=numpy.float32))
-            return self.treelite_predictor.predict(batch).item(0)
+        batch = TreeliteBatch.from_npy2d(numpy.array(features, dtype=numpy.float32))
+        return self.treelite_predictor.predict(batch)
+        # return self.treelite_predictor.predict(batch).item(0)
 
     def predict_instance(self, features):
         # This goes much slower than just passing a batch of 1 in above...
