@@ -344,13 +344,13 @@ class GBDTValue:
             params = {
                 'objective': 'mean_squared_error', # aka L2, rmse.  XXX Why same as root?
                 'boosting': "gbdt",  # gbdt is slower but better accuracy, goss is faster (but only slightly)
+                'metric': ["mean_squared_error", "mae"],
                 'bagging_fraction': bagging_fraction,
                 'bagging_freq': bagging_freq,
                 'learning_rate': learning_rate,  # This is overriden in the case where dynamic learning_rates are specified below
                 'num_leaves': num_leaves,
                 # 'max_depth': 3,
                 'max_bin': 128,
-                'metric': ["mean_squared_error", "mae"],
                 'min_data_in_leaf': 10,
                 'num_threads': 16,  # 0 is as many as CPUs for server
                 # 'min_gain_to_split': 0.01,
