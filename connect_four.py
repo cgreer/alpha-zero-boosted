@@ -2,6 +2,7 @@ import json
 from dataclasses import dataclass, asdict
 from typing import List, Any
 import environment
+import numpy
 
 
 ##############
@@ -44,18 +45,31 @@ for x in (0, 1, 2, 3, 4, 5, 6):
         BOARD_POSITIONS.append((x, y))
 
 
-def generate_features(state, agent_num):
+def generate_features(state, agents) -> numpy.array:
+    # :agents ~ [0, 1]
+    # :agents ~ [0, 1, 2]
+    # :agents ~ [0, 1, 5]
     # Which player's pov, which player is moving, is POV's player moving?
-    features = [0] * 87
-    features[0] = agent_num
-    features[1] = state.whose_move
-    features[2] = 1 if agent_num == state.whose_move else 0
+    features = numpy.zeros((2, 87), dtype=numpy.float32)
+
+    agent_0_features = features[0]
+    agent_1_features = features[1]
+
+    agent_0_features[0] = 0.0
+    agent_0_features[1] = state.whose_move
+    agent_0_features[2] = 1.0 if 0 == state.whose_move else 0.0
+
     for i, (x, y) in enumerate(BOARD_POSITIONS):
         p = state.board[x][y]
         if p == 1:
-            features[i + 3] = 1
+            agent_0_features[i + 3] = 1.0
         elif p == 2:
-            features[i + 45] = 1
+            agent_0_features[i + 45] = 1.0
+
+    # Copy agent 0's features and modify the only ones that changed for agent 1
+    agent_1_features[0:87] = agent_0_features[0:87]
+    agent_1_features[0] = 1.0
+    agent_1_features[2] = 1.0 if 1 == state.whose_move else 0.0
     return features
 
 

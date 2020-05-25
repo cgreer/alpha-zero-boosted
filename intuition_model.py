@@ -391,10 +391,8 @@ class GBDTValue:
     def predict(self, features) -> numpy.array:
         # :features ~ [features_1, features_2, ...]
         # :features ~ [(1, 0, ...), (0, 1, ...), ...]
-        # XXX: change agent code to be numpy arrays?
-        batch = TreeliteBatch.from_npy2d(numpy.array(features, dtype=numpy.float32))
-        return self.treelite_predictor.predict(batch)
         # return self.treelite_predictor.predict(batch).item(0)
+        return self.treelite_predictor.predict(TreeliteBatch.from_npy2d(features))
 
     def predict_instance(self, features):
         # This goes much slower than just passing a batch of 1 in above...

@@ -241,15 +241,11 @@ class MCTSAgent(Agent):
         else:
             allowable_actions = self.environment.enumerate_actions(state)
 
-            # XXX: replace with one call to feature_extractor that just gets features for all agents
-            # at the same time.  Pass in num_agents.
-            agent_features = [self.feature_extractor(state, agent.agent_num) for agent in self.environment.agents]
+            agent_features = self.feature_extractor(state, self.environment.agents)
             values = tuple(self.value_model.predict(agent_features))
 
             # XXX: You may only ever only need self.agent_num's policy for this if you want to save
             # some time here.
-            # action_prior_probabilities = tuple(self.policy_model(state, self.environment) for agent in self.environment.agents)
-            # action_prior_probabilities = tuple(zip(*action_prior_probabilities)) # ((action_1_agent_1, action_1_agent_2), ...)
             agent_policies = [self.policy_model.predict(features, allowable_actions) for features in agent_features]
 
         node = GameTreeNode(
