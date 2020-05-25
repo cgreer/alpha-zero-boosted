@@ -227,7 +227,7 @@ class GBDTValue:
 
         # Compile model to C++
         params = dict(
-            parallel_comp=0,
+            parallel_comp=14,
             # quantize=1, # Supposed to speed up predictions. Didn't when I tried it.
         )
         if annotation_results_path is not None:
@@ -241,6 +241,7 @@ class GBDTValue:
             verbose=False,
             params=params,
         )
+        print(f"Trained a treelite model: {self.treelite_model_path}")
         return self.treelite_model_path
 
     def stash_training_data(
@@ -322,14 +323,15 @@ class GBDTValue:
         # bagging_freqs = [5, 10, 20, 30]
         # num_leaves_choices = [2**7, 2**8, 2**9, 2**10, 2**11]
 
-        # Best, but treelite trains too slow
+        bagging_fractions = [.2]
+        bagging_freqs = [10]
+        num_leaves_choices = [2**8]
+
+        # Best, but treelite trains slowly so beware
         # bagging_fractions = [.3]
         # bagging_freqs = [20]
         # num_leaves_choices = [2**11]
 
-        bagging_fractions = [.2]
-        bagging_freqs = [10]
-        num_leaves_choices = [2**8]
         for (
             bagging_fraction,
             bagging_freq,
@@ -371,18 +373,19 @@ class GBDTValue:
         # Save lightgbm model to disk so treelite can load it
         lightgbm_model_path = f"{settings.TMP_DIRECTORY}/lightgbm-{str(uuid4())}.model"
         lightgbm_booster.save_model(lightgbm_model_path)
+        print("Dumped LGBM model here:", lightgbm_model_path)
 
         model_dict = lightgbm_booster.dump_model()
         lightgbm_model_dump_path = f"{settings.TMP_DIRECTORY}/lightgbm-{str(uuid4())}.json"
         with open(lightgbm_model_dump_path, 'w') as f:
             f.write(json.dumps(model_dict))
-        print("Dumped model here:", lightgbm_model_dump_path)
+        print("Dumped LGBM model (JSON) here:", lightgbm_model_dump_path)
 
         # Build treelite model
         #  - stash path in self.treelite_model_path
         self.build_treelite_model(
             lightgbm_model_path,
-            annotation_samples=test_features, # XXX: Change
+            annotation_samples=test_features,
         )
 
         # Load up the just-made treelite model for use
