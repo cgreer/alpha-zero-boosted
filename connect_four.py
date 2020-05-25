@@ -46,15 +46,16 @@ for x in (0, 1, 2, 3, 4, 5, 6):
 
 def generate_features(state, agent_num):
     # Which player's pov, which player is moving, is POV's player moving?
-    features = [
-        agent_num,
-        state.whose_move,
-        1 if agent_num == state.whose_move else 0,
-    ]
-
-    # yellow/red masks
-    features.extend((1 if state.board[x][y] == 1 else 0 for (x, y) in BOARD_POSITIONS))
-    features.extend((1 if state.board[x][y] == 2 else 0 for (x, y) in BOARD_POSITIONS))
+    features = [0] * 87
+    features[0] = agent_num
+    features[1] = state.whose_move
+    features[2] = 1 if agent_num == state.whose_move else 0
+    for i, (x, y) in enumerate(BOARD_POSITIONS):
+        p = state.board[x][y]
+        if p == 1:
+            features[i + 3] = 1
+        elif p == 2:
+            features[i + 45] = 1
     return features
 
 
