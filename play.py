@@ -34,12 +34,15 @@ else:
     P2_agent_class = MCTSAgent
 
 env_module = get_env_module(environment)
-environment = env_module.Environment()
 
-agent_1 = P1_agent_class(environment=environment, **p1_agent_settings)
-agent_2 = P2_agent_class(environment=environment, ** p2_agent_settings)
+# Play N games
+for i in range(5):
+    environment = env_module.Environment()
 
-environment.add_agent(agent_1)
-environment.add_agent(agent_2)
+    agent_1 = P1_agent_class(environment=environment, **p1_agent_settings)
+    agent_2 = P2_agent_class(environment=environment, ** p2_agent_settings)
 
-environment.run()
+    environment.add_agent(agent_1)
+    environment.add_agent(agent_2)
+
+    environment.run()
