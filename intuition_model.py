@@ -44,15 +44,20 @@ def extract_policy_labels(move, environment):
     return policy_labels
 
 
+# XXX: Move to train
 def split_train_test(samples, test_fraction, only_of_type):
     '''
-    Partition the games into training and test games.
+    Partition the games into training and test games. Positions from a game that is
+    in the training set should not be in the test set.
 
-    If the positions from the a game are in both the training and test sets, then it'll be easy for
-    a model to overfit by memorizing non-generalizable aspects of a particular game.
+    If the positions from the same game are in both the training and test sets, then
+    it'll be easy for a model to overfit by memorizing non-generalizable aspects of a
+    particular game.
+
+    :test_fraction ~ [0.0, 1.0]
     '''
     # Convert test fraction to percentage from 0-100
-    rounded_test_percentage = int(test_fraction) # off by a bit cuz rounding...
+    rounded_test_percentage = int(test_fraction * 100) # off by a bit cuz rounding... should be fine
     train_set = []
     test_set = []
     for sample_type, game_bucket, features, label in samples:
@@ -278,15 +283,13 @@ class GBDTValue:
         #  - label is {-1, 0, 1}
         train_set, test_set = split_train_test(samples, test_fraction, "value")
 
-        print("Building Train Matrix")
+        print(f"Building Train Matrix from {len(train_set)} positions")
         train_features = numpy.array(tuple(numpy.array(x[0]) for x in train_set))
         train_labels = numpy.array(tuple(x[1] for x in train_set))
-        # train_data = lightgbm.Dataset(data, label=label)
 
-        print("Building Test Matrix")
+        print(f"Building Test Matrix from {len(test_set)} positions")
         test_features = numpy.array(tuple(numpy.array(x[0]) for x in test_set))
         test_labels = numpy.array(tuple(x[1] for x in test_set))
-        # test_data = lightgbm.Dataset(data, label=label)
 
         # Stash the data so we can reload it later to easily tweak with stuff
         self.stash_training_data(train_features, train_labels, test_features, test_labels)
