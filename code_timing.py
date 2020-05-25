@@ -387,6 +387,23 @@ with time_operation(op, BASE_ITERATIONS) as op:
     for i in range(op.num_interations):
         numpy.array([s], dtype=numpy.float32)
 
+from treelite.runtime import ( # noqa
+    Batch as TreeliteBatch,
+)
+features = [0] * 87 # size of connect feature array
+features = [features, features]
+op = "TreeliteBatch.from_npy2d(numpy.array(features, dtype=numpy.float32))"
+with time_operation(op, BASE_ITERATIONS) as op:
+    for i in range(op.num_interations):
+        TreeliteBatch.from_npy2d(numpy.array(features, dtype=numpy.float32))
+
+features = [0] * 87 # size of connect feature array
+features = [features, features]
+op = "TreeliteBatch.from_npy2d(numpy.asarray(features, dtype=numpy.float32))"
+with time_operation(op, BASE_ITERATIONS) as op:
+    for i in range(op.num_interations):
+        TreeliteBatch.from_npy2d(numpy.asarray(features, dtype=numpy.float32))
+
 ###############
 # Display all results
 ###############
