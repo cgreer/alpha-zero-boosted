@@ -33,7 +33,7 @@ def time_operation(name, num_interations):
 def display_results(message, ops_per_sec):
     time_per_op = 1.0 / ops_per_sec
     ops_per_sec = "{:,.1f}".format(ops_per_sec)
-    print("{:<60}{:>30}{:>30}".format(message, ops_per_sec, time_per_op))
+    print("{:<90}{:>30}{:>30}".format(message, ops_per_sec, time_per_op))
 
 
 # Warm up
@@ -403,6 +403,51 @@ op = "TreeliteBatch.from_npy2d(numpy.asarray(features, dtype=numpy.float32))"
 with time_operation(op, BASE_ITERATIONS) as op:
     for i in range(op.num_interations):
         TreeliteBatch.from_npy2d(numpy.asarray(features, dtype=numpy.float32))
+
+op = "b = actions / actions.sum()"
+actions = numpy.array([.2, .3, .1, 0.5, .1, .2, .2], dtype=numpy.float32)
+with time_operation(op, BASE_ITERATIONS) as op:
+    for i in range(op.num_interations):
+        b = actions / actions.sum()
+
+op = "b = actions / s (manual sum)"
+actions = numpy.array([.2, .3, .1, 0.5, .1, .2, .2], dtype=numpy.float32)
+with time_operation(op, BASE_ITERATIONS) as op:
+    for i in range(op.num_interations):
+        s = 0.0
+        for x in actions:
+            s += x
+        b = actions / s
+
+op = "a * (1 - .25) (a is numpy.float32)"
+a = numpy.float32(0.6)
+b = numpy.float32(1.0)
+c = numpy.float32(0.25)
+with time_operation(op, BASE_ITERATIONS) as op:
+    for i in range(op.num_interations):
+        a * (1 - .25)
+
+op = "a * (1 - .25) (a is python float)"
+a = 0.6
+with time_operation(op, BASE_ITERATIONS) as op:
+    for i in range(op.num_interations):
+        a * (1 - .25)
+
+op = "a * (b - c) (a,b,c are numpy.float32)"
+a = numpy.float32(0.6)
+b = numpy.float32(1.0)
+c = numpy.float32(0.25)
+with time_operation(op, BASE_ITERATIONS) as op:
+    for i in range(op.num_interations):
+        a * (b - c)
+
+op = "a * (b - c) (a,b,c are python floats)"
+a = 0.6
+b = 1.0
+c = 0.25
+with time_operation(op, BASE_ITERATIONS) as op:
+    for i in range(op.num_interations):
+        a * (b - c)
 
 ###############
 # Display all results
