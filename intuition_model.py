@@ -5,10 +5,17 @@ import json
 import sys
 import typing
 import random
+from uuid import uuid4
+import settings
+import shutil
+import itertools
+import pprint
+
+from training_samples import split_train_test
+
 from rich import print as rprint
 import lightgbm
 import numpy
-import pprint
 from treelite.runtime import (
     Predictor as TreelitePredictor,
     Batch as TreeliteBatch,
@@ -18,153 +25,6 @@ from treelite import (
     Annotator as TreeliteAnnotator,
     DMatrix as TreeliteDMatrix,
 )
-from uuid import uuid4
-import settings
-import shutil
-import itertools
-
-
-def extract_policy_labels(move, environment):
-    '''
-    The mcts policy labels are a vector of (move visit_count / total visits) for the node that the
-    mcts ran for.
-    '''
-    mcts_info = {}
-    total_visits = 0
-    for move, _, visit_count, _ in move["policy_info"]:
-        # move, prior_probability, visit_count, reward_total
-        mcts_info[move] = visit_count
-        total_visits += visit_count
-
-    policy_labels = []
-    for env_move in environment.all_possible_actions():
-        label = mcts_info.get(env_move, 0.0) / total_visits
-        policy_labels.append(label)
-
-    return policy_labels
-
-
-# XXX: Move to train
-def split_train_test(samples, test_fraction, only_of_type):
-    '''
-    Partition the games into training and test games. Positions from a game that is
-    in the training set should not be in the test set.
-
-    If the positions from the same game are in both the training and test sets, then
-    it'll be easy for a model to overfit by memorizing non-generalizable aspects of a
-    particular game.
-
-    :test_fraction ~ [0.0, 1.0]
-    '''
-    # Convert test fraction to percentage from 0-100
-    rounded_test_percentage = int(test_fraction * 100) # off by a bit cuz rounding... should be fine
-    train_set = []
-    test_set = []
-    for sample_type, game_bucket, features, label in samples:
-        if sample_type != only_of_type:
-            continue
-        which_set = test_set if (game_bucket % 100) <= rounded_test_percentage else train_set
-        which_set.append((features, label))
-    return train_set, test_set
-
-    train_set = []
-    test_set = []
-    split_point = int(len(samples) * (1 - test_fraction))
-    i = 0
-    for sample_type, features, label in samples:
-        i += 1
-        if sample_type != only_of_type:
-            continue
-        if i <= split_point:
-            train_set.append((features, label))
-        else:
-            test_set.append((features, label))
-    return train_set, test_set
-
-    i = 0
-    every_n_test = int(round(1 / test_fraction))
-    for sample_type, features, label in samples:
-        if sample_type != only_of_type:
-            continue
-        i += 1
-
-        if i % every_n_test == 0:
-            test_set.append((features, label))
-        else:
-            train_set.append((features, label))
-
-    return train_set, test_set
-
-
-@dataclass
-class NaiveValue:
-    state_visits: typing.Any = None # features: int
-    state_wins: typing.Any = None # features: int
-
-    def save(self, output_path):
-        data = {
-            "state_visits": list(self.state_visits.items()),
-            "state_wins": list(self.state_wins.items()),
-        }
-
-        # pathlib.Path(output_dir).mkdir(parents=True, exist_ok=True)
-
-        with open(output_path, 'w') as f:
-            f.write(json.dumps(data))
-
-    def load(self, model_path):
-        data = open(model_path, 'r').read()
-        data = json.loads(data)
-        self.state_visits = {tuple(key): int(value) for (key, value) in data["state_visits"]}
-        self.state_wins = {tuple(key): int(value) for (key, value) in data["state_wins"]}
-
-    def train(self, samples, test_fraction=.2):
-        train_set, test_set = split_train_test(samples, test_fraction, "value")
-
-        # "Train"
-        self.state_visits = defaultdict(int)
-        self.state_wins = defaultdict(int)
-        for features, label in train_set:
-            self.state_visits[tuple(features)] += 1
-            self.state_wins[tuple(features)] += label
-
-        # Convert them to dicts to maintain consistency with load
-        self.state_visits = dict(self.state_visits)
-        self.state_wins = dict(self.state_wins)
-
-        # delete any keys that are too infrequent
-        to_delete = []
-        for k, v in self.state_visits.items():
-            if v <= 5:
-                to_delete.append(k)
-        for k in to_delete:
-            del self.state_visits[k]
-            del self.state_wins[k]
-
-        # "Test"
-        absolute_error = 0
-        absolute_error_random = 0
-        for features, label in test_set:
-            value = self.predict(features)
-            random_value = -1.0 + (2.0 * random.random())
-            absolute_error += abs(label - value)
-            absolute_error_random += abs(label - random_value)
-        mean_absolute_error = absolute_error / len(test_set)
-        mean_absolute_error_random = absolute_error_random / len(test_set)
-
-        print("MAE:", mean_absolute_error)
-        print("MAE (random):", mean_absolute_error_random)
-
-    def predict(self, features):
-        # :features ~ [(0, 1, ...), ...]
-        values = []
-        for board_features in features:
-            try:
-                values.append(self.state_wins[tuple(features)] / self.state_visits[tuple(features)])
-            except (KeyError, ZeroDivisionError):
-                # XXX: How is there a ZeroDivisionError but not a key error
-                values.append(0)
-        return tuple(values)
 
 
 @dataclass
