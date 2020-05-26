@@ -34,6 +34,9 @@ class Environment(ABC):
         # Record and set the random seed so we can replay games deterministically
         numpy.random.seed(self.random_seed)
 
+        # Uncomment this to make games always play the same way for timing tests.
+        # numpy.random.seed(1838298)
+
     @abstractmethod
     def add_agent(self, agent):
         self.agents.append(agent)
