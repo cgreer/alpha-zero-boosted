@@ -11,25 +11,6 @@ import settings
 import time
 
 
-# XXX: move to value/policy models
-class UnopinionatedValue:
-
-    def predict(self, features):
-        # :features ~ [(0, 1, ...), ...]
-        return (0.0,) * len(features)
-
-
-# XXX: move to value/policy models
-class UniformPolicy:
-
-    def predict(self, features, allowable_actions):
-        # Has to handle terminal state as well?
-        if not allowable_actions:
-            return {}
-        uniform_probability = 1.0 / len(allowable_actions)
-        return {move: uniform_probability for move in allowable_actions}
-
-
 @dataclass
 class NoiseMaker:
     '''

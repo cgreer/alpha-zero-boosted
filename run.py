@@ -1,6 +1,4 @@
-import sys
-from agents import HumanAgent, RandomAgent, MCTSAgent, UnopinionatedValue, UniformPolicy
-import leftright
+from agents import HumanAgent, MCTSAgent
 import tictactoe
 import connect_four
 import intuition_model
@@ -27,8 +25,6 @@ mcts_agent_default_settings = dict(
     feature_extractor=None,
     value_model=naive_value_model,
     policy_model=naive_policy_model,
-    # value_model=UnopinionatedValue(),
-    # policy_model=UniformPolicy(),
     move_consideration_steps=800,
     move_consideration_time=.1,
     puct_explore_factor=1.0,

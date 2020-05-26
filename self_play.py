@@ -1,9 +1,5 @@
 import time
-from agents import (
-    MCTSAgent,
-    UnopinionatedValue,
-    UniformPolicy,
-)
+from agents import MCTSAgent
 import intuition_model
 from environment_registry import get_env_module
 from paths import build_model_paths, build_replay_directory
@@ -19,8 +15,8 @@ def configure_bot(environment_name, species, generation):
 
     if generation == 1:
         # XXX: Setup per-environment bootstrapping models here
-        value_model = UnopinionatedValue()
-        policy_model = UniformPolicy()
+        value_model = intuition_model.UnopinionatedValue()
+        policy_model = intuition_model.UniformPolicy()
     else:
         if species == "mcts_naive":
             value_model_path, policy_model_path = build_model_paths(environment_name, species, generation)

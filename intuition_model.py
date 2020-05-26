@@ -27,6 +27,21 @@ from treelite import (
 )
 
 
+class UnopinionatedValue:
+    def predict(self, features):
+        # :features ~ [(0, 1, ...), ...]
+        return (0.0,) * len(features)
+
+
+class UniformPolicy:
+    def predict(self, features, allowable_actions):
+        # Has to handle terminal state as well?
+        if not allowable_actions:
+            return {}
+        uniform_probability = 1.0 / len(allowable_actions)
+        return [uniform_probability] * len(allowable_actions)
+
+
 @dataclass
 class GBDTValue:
     treelite_model_path: typing.Any = None

@@ -1,5 +1,5 @@
 import sys
-from agents import RandomAgent, MCTSAgent, UnopinionatedValue, uniform_policy
+from agents import RandomAgent, MCTSAgent
 import tictactoe
 import intuition_model
 import copy
@@ -10,12 +10,12 @@ replay_directory = sys.argv[1]
 samples = list(intuition_model.generate_training_samples(replay_directory, tictactoe.State, tictactoe.generate_features))
 naive_value_model = intuition_model.NaiveValue.from_training_samples(samples, tictactoe.generate_features)
 
-unopinionated_value = UnopinionatedValue()
+unopinionated_value = intuition_model.UnopinionatedValue()
 
 mcts_base_settings = dict(
     game_tree=None,
     current_node=None,
-    policy_model=uniform_policy,
+    policy_model=intuition_model.UniformPolicy(),
     move_consideration_steps=100,
     move_consideration_time=None,
     puct_explore_factor=1.0,

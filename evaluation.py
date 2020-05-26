@@ -1,4 +1,5 @@
-from agents import RandomAgent, MCTSAgent, UnopinionatedValue, UniformPolicy
+from agents import RandomAgent, MCTSAgent
+from intuition_model import UnopinionatedValue, UniformPolicy
 from dataclasses import dataclass
 from itertools import combinations
 from trueskill import Rating, quality_1vs1, rate_1vs1
