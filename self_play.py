@@ -40,7 +40,8 @@ def configure_bot(environment_name, species, generation):
             value_model = intuition_model.GBDTValue()
             value_model.load(value_model_path)
 
-            policy_model = UniformPolicy()
+            policy_model = intuition_model.GBDTPolicy()
+            policy_model.load(policy_model_path)
         else:
             raise KeyError(f"Unknown species: {species}")
 
