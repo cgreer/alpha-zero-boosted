@@ -449,9 +449,22 @@ with time_operation(op, BASE_ITERATIONS) as op:
     for i in range(op.num_interations):
         a * (b - c)
 
+op = "b = copy.copy(s)"
+s = set((x, 1, 2, 3) for x in range(180))
+with time_operation(op, BASE_ITERATIONS) as op:
+    for i in range(op.num_interations):
+        b = copy(s)
+
+op = "b = set(s)"
+s = set((x, 1, 2, 3) for x in range(180))
+with time_operation(op, BASE_ITERATIONS) as op:
+    for i in range(op.num_interations):
+        b = set(s)
+
+
 ###############
 # Display all results
 ###############
-operation_info.sort(key=lambda x: x[1], reverse=True)
+# operation_info.sort(key=lambda x: x[1], reverse=True)
 for op, ops_per_sec in operation_info:
     display_results(op, ops_per_sec)
