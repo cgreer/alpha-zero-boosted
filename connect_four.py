@@ -235,6 +235,9 @@ class Environment(environment.Environment):
     def translate_human_input(self, human_input):
         return int(human_input)
 
+    def all_possible_actions(self):
+        return tuple(range(7))
+
     def enumerate_actions(self, state):
         actions = []
         for x in (0, 1, 2, 3, 4, 5, 6):
