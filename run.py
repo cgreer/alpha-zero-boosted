@@ -99,9 +99,6 @@ new_state = environment.transition_state(state, move)
 print()
 print(environment.text_display(new_state))
 
-for search_tree_node in mcts_agent_1.iter_game_tree(mcts_agent_1.current_node):
-    print(search_tree_node.parent_edge.move if search_tree_node.parent_edge else None, search_tree_node.state)
-
 state = tictactoe.State(board=(0, 0, 1, 0, 2, 2, 0, 1, 1), whose_move=1)
 print()
 print(environment.text_display(state))

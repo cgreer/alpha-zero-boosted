@@ -517,30 +517,3 @@ class MCTSAgent(Agent):
         # import pprint
         # pprint.pprint(data)
         return data
-
-    def iter_game_tree(self, entry_node, node_id_fxn):
-        # breadth first search nodes
-        visited = set([node_id_fxn(entry_node)])
-        queue = [entry_node]
-        while queue:
-            node = queue.pop(0)
-            yield node
-
-            for child_edge in node.child_edges:
-                if child_edge.child_node is None:
-                    # leaf node/terminal with dangling child node
-                    continue
-                if node_id_fxn(child_edge.child_node) in visited:
-                    continue
-                queue.append(child_edge.child_node)
-                visited.add(node_id_fxn(child_edge.child_node))
-                '''
-                print(
-                    f"parent ({hex(hash(str(node.state)))[-6:]})",
-                    f"move:{child_edge.move}",
-                    # f"N(s):{total_node_visits}",
-                    f"N(s, a):{child_edge.visit_count}",
-                    f"W(s, a):{child_edge.reward_totals}",
-                    f"prior:{round(child_edge.prior_probabilities, 4)}",
-                )
-                '''
