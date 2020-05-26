@@ -260,7 +260,7 @@ def test():
     naive_value_model = intuition_model.NaiveValue()
     naive_value_model.load("./ttt_naive_value.model")
 
-    naive_policy_model = intuition_model.NaivePolicy(tictactoe.Environment().all_possible_actions())
+    naive_policy_model = intuition_model.NaivePolicy()
     naive_policy_model.load("./ttt_naive_policy.model")
 
     mcts_agent_naive_settings = copy.deepcopy(mcts_base_settings)

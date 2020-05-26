@@ -270,7 +270,7 @@ class GBDTValue:
         # :features ~ [features_1, features_2, ...]
         # :features ~ [(1, 0, ...), (0, 1, ...), ...]
         # return self.treelite_predictor.predict(batch).item(0)
-        return self.treelite_predictor.predict(TreeliteBatch.from_npy2d(features))
+        return self.treelite_predictor.predict(TreeliteBatch.from_npy2d(features)).tolist()
 
     def predict_instance(self, features):
         # This goes much slower than just passing a batch of 1 in above...
@@ -335,7 +335,7 @@ class GBDTPolicy:
                 tmp_annotation_info,
             )
 
-        # Compile model to C++
+        # Compile model to C/C++
         params = dict(
             parallel_comp=14,
             # quantize=1, # Supposed to speed up predictions. Didn't when I tried it.
@@ -524,10 +524,10 @@ class GBDTPolicy:
     def predict(self, agent_features, allowable_actions):
         # :agent_features ~ array[0, 1, 0, 7, ....]
         #   - This is just ONE agent's features.  Unlike for the Value Model, every node only needs
-        #     the policy of the agent that is moving from that state.
+        #     the policy of the state's *moving* agent
         # :allowable_actions ~ array[0, 1, 0, 7, ....]
         if len(allowable_actions) == 1:
-            return {allowable_actions[0]: 1.0}
+            return [1.0]
 
         # Build ndarray with policy features
         # - tile the state features with a leading placeholder feature(s) for each action
@@ -535,7 +535,7 @@ class GBDTPolicy:
         # - XXX: concatenate transposed allowable_actions to tiled features is faster?
         to_predict = numpy.tile(
             numpy.concatenate(([0.0], agent_features)),
-            (len(allowable_actions,), 1)
+            (len(allowable_actions), 1)
         )
         for i, action in enumerate(allowable_actions):
             to_predict[i][0] = action
@@ -546,7 +546,7 @@ class GBDTPolicy:
         #   training is setup (not ovr multiclass), we need to normalize to ensure they sum to 1.0.
         move_probabilities = self.treelite_predictor.predict(TreeliteBatch.from_npy2d(to_predict))
         move_probabilities = move_probabilities / move_probabilities.sum()
-        return {move: move_probabilities[i] for i, move in enumerate(allowable_actions)}
+        return move_probabilities.tolist()
 
 
 @dataclass
@@ -622,7 +622,6 @@ class NaiveValue:
 
 @dataclass
 class NaivePolicy:
-    possible_actions: typing.Any
     state_action_mass: typing.Any = None # tuple: float
     state_action_weight: typing.Any = None # tuple: float
 
@@ -664,15 +663,16 @@ class NaivePolicy:
 
     def predict(self, features, allowable_actions):
         try:
-            move_probabilities = {}
-            for i, action in enumerate(self.possible_actions):
+            move_probabilities = []
+            for i, action in enumerate(allowable_actions):
                 state_action = tuple(features + [i])
-                move_probabilities[action] = self.state_action_mass[state_action] / self.state_action_weight[state_action]
+                move_probabilities.append(self.state_action_mass[state_action] / self.state_action_weight[state_action])
             return move_probabilities
         except KeyError:
             # Never seen this state before; therefore, use uniform policy
+            # XXX: Change this to be a list like it's other predict friends.
             uniform_probability = 1.0 / len(allowable_actions)
-            return {move: uniform_probability for move in allowable_actions}
+            return [uniform_probability] * len(allowable_actions)
 
 
 def train_naive_models():
@@ -696,7 +696,7 @@ def train_naive_models():
     value_model.save("./ttt_naive_value.model")
     value_model.load("./ttt_naive_value.model")
 
-    policy_model = NaivePolicy(env.all_possible_actions())
+    policy_model = NaivePolicy()
     policy_model.train(samples)
     policy_model.save("./ttt_naive_policy.model")
     policy_model.load("./ttt_naive_policy.model")
@@ -739,7 +739,7 @@ def train_connect_4():
     value_model.save("./c4_naive_value.model")
     value_model.load("./c4_naive_value.model")
 
-    policy_model = NaivePolicy(env.all_possible_actions())
+    policy_model = NaivePolicy()
     policy_model.train(samples)
     policy_model.save("./c4_naive_policy.model")
     policy_model.load("./c4_naive_policy.model")

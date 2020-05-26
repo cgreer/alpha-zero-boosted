@@ -11,7 +11,7 @@ naive_value_model = intuition_model.NaiveValue()
 # naive_value_model.load("./ttt_naive_value.model")
 naive_value_model.load("./c4_naive_value.model")
 
-naive_policy_model = intuition_model.NaivePolicy(tictactoe.Environment().all_possible_actions())
+naive_policy_model = intuition_model.NaivePolicy()
 # naive_policy_model.load("./ttt_naive_policy.model")
 naive_policy_model.load("./c4_naive_policy.model")
 

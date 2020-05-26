@@ -223,7 +223,7 @@ class MCTSAgent(Agent):
             allowable_actions = self.environment.enumerate_actions(state)
 
             agent_features = self.feature_extractor(state, self.environment.agents)
-            values = tuple(self.value_model.predict(agent_features))
+            values = self.value_model.predict(agent_features)
 
             # Only the policy of the agent that is moving at this position is needed.
             agent_policy = self.policy_model.predict(agent_features[state.whose_move], allowable_actions)
@@ -243,13 +243,13 @@ class MCTSAgent(Agent):
             parent_edge.child_node = node
 
         # Initialize edges
-        for move in allowable_actions:
+        for i, move in enumerate(allowable_actions):
             node.child_edges.append(
                 GameTreeEdge(
                     parent_node=node,
                     child_node=None,
                     move=move,
-                    prior_probability=agent_policy[move], # XXX: Get rid of this dictionary nonsense
+                    prior_probability=agent_policy[i],
                     visit_count=0,
                     reward_totals=[0.0] * len(self.environment.agents),
                 )

@@ -25,7 +25,7 @@ def configure_bot(environment_name, species, generation):
             value_model.load(value_model_path)
 
             # XXX: pass in env, fix all_possible_actions nonsense
-            policy_model = intuition_model.NaivePolicy(env_module.Environment().all_possible_actions())
+            policy_model = intuition_model.NaivePolicy()
             policy_model.load(policy_model_path)
         elif species == "mcts_gbdt":
             value_model_path, policy_model_path = build_model_paths(
