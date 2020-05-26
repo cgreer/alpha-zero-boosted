@@ -182,9 +182,9 @@ class GameTreeEdge:
     parent_node: GameTreeNode
     child_node: GameTreeNode
     move: str
-    prior_probabilities: Tuple[float] # 1 for each agent
+    prior_probability: float # Prior for agent moving from this position
     visit_count: int
-    reward_totals: List[float] # 1 for each agent
+    reward_totals: List[float] # 1 float for each agent
 
 
 @dataclass
@@ -244,9 +244,8 @@ class MCTSAgent(Agent):
             agent_features = self.feature_extractor(state, self.environment.agents)
             values = tuple(self.value_model.predict(agent_features))
 
-            # XXX: You may only ever only need self.agent_num's policy for this if you want to save
-            # some time here.
-            agent_policies = [self.policy_model.predict(features, allowable_actions) for features in agent_features]
+            # Only the policy of the agent that is moving at this position is needed.
+            agent_policy = self.policy_model.predict(agent_features[state.whose_move], allowable_actions)
 
         node = GameTreeNode(
             state=state,
@@ -269,8 +268,7 @@ class MCTSAgent(Agent):
                     parent_node=node,
                     child_node=None,
                     move=move,
-                    # prior_probabilities=action_prior_probabilities[i],
-                    prior_probabilities=tuple(agent_policy[move] for agent_policy in agent_policies),
+                    prior_probability=agent_policy[move], # XXX: Get rid of this dictionary nonsense
                     visit_count=0,
                     reward_totals=[0.0] * len(self.environment.agents),
                 )
@@ -285,7 +283,7 @@ class MCTSAgent(Agent):
         noise_alpha=1.0,
         noise_influence=0.25,
     ):
-        # Get visit count of state (first pass)
+        # Get visit count of state
         # XXX: is node visit count (sum edge visits or does an expansion count as 1)
         # - What does a "node visit" mean?
         total_node_visits = node.visit_count
@@ -320,7 +318,7 @@ class MCTSAgent(Agent):
             if child_edge.visit_count > 0:
                 exploitation_term = child_edge.reward_totals[agent_moving] / child_edge.visit_count
 
-            noisy_prior = (child_edge.prior_probabilities[agent_moving] * (1 - noise_influence)) + (noise[i] * noise_influence)
+            noisy_prior = (child_edge.prior_probability * (1 - noise_influence)) + (noise[i] * noise_influence)
             exploration_term = explore_factor * noisy_prior
             exploration_term = exploration_term * (sqrt_total_node_visits / (1 + child_edge.visit_count))
 
@@ -333,7 +331,7 @@ class MCTSAgent(Agent):
                     f"N(s):{total_node_visits}",
                     f"N(s, a):{child_edge.visit_count}",
                     f"W(s, a):{child_edge.reward_totals[agent_moving]}",
-                    f"prior:{round(child_edge.prior_probabilities[agent_moving], 4)}",
+                    f"prior:{round(child_edge.prior_probability, 4)}",
                     f"noise:{round(noise[i], 4)}",
                     f"exploit:{round(exploitation_term, 3)}",
                     f"explore:{round(exploration_term, 3)}",
@@ -427,10 +425,11 @@ class MCTSAgent(Agent):
             elif (p_win or 0) < 0:
                 color = "red"
 
+            prior = round(float(child_edge.prior_probability), 3)
             rprint("{:<8}{:<8}{:<8}[{}]{:<8}[/{}]".format(
                 child_edge.move,
                 child_edge.visit_count,
-                round(child_edge.prior_probabilities[self.agent_num], 3),
+                prior,
                 color,
                 (p_win or "-"),
                 color,
@@ -489,7 +488,7 @@ class MCTSAgent(Agent):
             for child_edge in game_tree_node.child_edges:
                 policy_info.append((
                     child_edge.move,
-                    child_edge.prior_probabilities[self.agent_num],
+                    float(child_edge.prior_probability),
                     child_edge.visit_count,
                     child_edge.reward_totals[self.agent_num],
                 ))
