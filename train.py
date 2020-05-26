@@ -11,8 +11,8 @@ def run(
     head_batch_num,
     max_games=500_000,
     max_generational_lookback=10,
+    positions_per_batch=1_000_000_000,
 ):
-
     env_class = get_env_module(environment)
     env = env_class.Environment() # XXX: Refactor to get rid of this.
 
@@ -27,12 +27,16 @@ def run(
         # XXX: Implement game capping
         # num_games = parse_batch_directory # XXX: Implement game capping
         # XXX: Implement generation lookback capping
-        for sample in generate_training_samples(
-            replay_directory,
-            env_class.State,
-            env_class.generate_features,
-            env,
+        for i, sample in enumerate(
+            generate_training_samples(
+                replay_directory,
+                env_class.State,
+                env_class.generate_features,
+                env,
+            )
         ):
+            if i >= (positions_per_batch - 1):
+                break
             samples.append(sample)
 
     ####################
@@ -78,7 +82,7 @@ if __name__ == "__main__":
     HEAD_BATCH_NUM = 8 # Highest
     MAX_GAMES = 500_000
     MAX_GENERATIONAL_LOOKBACK = 10
-
+    POSITIONS_PER_BATCH = 100 * 64_000 * 10 # moves/game * max games/batch * safety multiplier
     run(
         ENVIRONMENT,
         BOT_SPECIES,
@@ -86,4 +90,5 @@ if __name__ == "__main__":
         HEAD_BATCH_NUM,
         MAX_GAMES,
         MAX_GENERATIONAL_LOOKBACK,
+        POSITIONS_PER_BATCH,
     )
