@@ -25,7 +25,7 @@ class NoiseMaker:
         self.noise = {}
 
     def _sample_noise(self, alpha, size):
-        return numpy.random.dirichlet([alpha] * size, self.num_samples_per_parameter)
+        return numpy.random.dirichlet([alpha] * size, self.num_samples_per_parameter).tolist()
 
     def make_noise(self, alpha, size):
         # Lookup cached noise
@@ -48,7 +48,7 @@ class NoiseMaker:
         return noise_data[1][noise_data[0]]
 
 
-NOISE_MAKER = NoiseMaker(10_000)
+NOISE_MAKER = NoiseMaker(15_000)
 
 
 @dataclass
