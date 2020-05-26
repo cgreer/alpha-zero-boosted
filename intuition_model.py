@@ -532,19 +532,21 @@ class GBDTPolicy:
         # Build ndarray with policy features
         # - tile the state features with a leading placeholder feature(s) for each action
         # - overwrite the placeholder feature(s) with action values
-        # - XXX: concatenate transposed allowable_actions to tiled features is faster?
-        to_predict = numpy.tile(
-            numpy.concatenate(([0.0], agent_features)),
-            (len(allowable_actions), 1)
-        )
+        # XXX: Do something besides using index as feature for model
+        # XXX: Will this be slower with more allowable_actions actions than just tiling?
+        num_agent_features = len(agent_features)
+        to_predict = numpy.empty((len(allowable_actions), num_agent_features + 1), dtype=numpy.float32)
         for i, action in enumerate(allowable_actions):
             to_predict[i][0] = action
+            to_predict[i][1:num_agent_features + 1] = agent_features[0:num_agent_features]
 
         # Predict move probabilities
+        move_probabilities = self.treelite_predictor.predict(TreeliteBatch.from_npy2d(to_predict))
+
+        # Normalize scores to sum to 1.0
         # - The scores returned are strong attempts at probabilities that sum up to 1.0.  In fact,
         #   they already sum up to close to 1.0 without normalization.  But because of the way the
         #   training is setup (not ovr multiclass), we need to normalize to ensure they sum to 1.0.
-        move_probabilities = self.treelite_predictor.predict(TreeliteBatch.from_npy2d(to_predict))
         move_probabilities = move_probabilities / move_probabilities.sum()
         return move_probabilities.tolist()
 
