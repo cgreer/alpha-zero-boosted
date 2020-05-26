@@ -247,9 +247,6 @@ class Environment(environment.Environment):
                     break
         return actions
 
-    def all_possible_actions(self):
-        return tuple(range(7))
-
     def rewards(self, state):
         winner = self.find_winner(state)
         if winner == 1:
