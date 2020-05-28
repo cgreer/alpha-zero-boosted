@@ -5,7 +5,8 @@ from environment_registry import get_env_module
 
 # script.py <environment> <p1 bot name> <p2 bot_name>
 # script.py connect_four mcts_naive-6 human
-environment, p1_bot_name, p2_bot_name = sys.argv[1:]
+environment, p1_bot_name, p2_bot_name, num_games = sys.argv[1:]
+num_games = int(num_games)
 
 
 def configure_agent(bot_name):
@@ -36,7 +37,7 @@ else:
 env_module = get_env_module(environment)
 
 # Play N games
-for i in range(5):
+for i in range(num_games):
     environment = env_module.Environment()
 
     agent_1 = P1_agent_class(environment=environment, **p1_agent_settings)
