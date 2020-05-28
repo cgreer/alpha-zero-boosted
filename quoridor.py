@@ -379,6 +379,8 @@ class Environment(environment.Environment):
         # - :movement_direction is [0-7], see move_player
         self.action_info = []
 
+        _, self.action_name_by_id = self.build_action_name_mappings()
+
         self.move_action_info = [
             (0, 0, 1),
             (1, 1, 0),
@@ -550,6 +552,33 @@ class Environment(environment.Environment):
         elif state.p2_y <= 0:
             return True
         return False
+
+    def build_action_name_mappings(self):
+        action_id_by_name = {
+            "u": 0,
+            "r": 1,
+            "d": 2,
+            "l": 3,
+            "ju": 4,
+            "jr": 5,
+            "jd": 6,
+            "jl": 7,
+        }
+        i = 8
+        for y in range(8):
+            for x in range(8):
+                name = f"{x}{y}v"
+                action_id_by_name[name] = i
+                i += 1
+
+                name = f"{x}{y}h"
+                action_id_by_name[name] = i
+                i += 1
+
+        # Make inverse
+        action_name_by_id = {v: k for k, v in action_id_by_name.items()}
+
+        return action_id_by_name, action_name_by_id
 
     def translate_human_input(self, human_input):
         # u, uj, 89v

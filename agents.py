@@ -418,9 +418,13 @@ class MCTSAgent(Agent):
             steps_per_sec = round(steps / (time.time() - st_time), 1)
             print("MCTS", steps, "considerations,", steps_per_sec, "per sec")
 
-    def display_best_move(self):
+    def display_best_moves(self):
+
+        most_visited_edges = [(ce.visit_count, i, ce) for i, ce in enumerate(self.current_node.child_edges)] # (num_visits, edge)
+        most_visited_edges.sort(reverse=True)
+
         print("\n{:<8}{:<8}{:<8}{:<8}".format("MOVE", "VISITS", "PRIOR", "P(WIN)"))
-        for child_edge in self.current_node.child_edges:
+        for _, _, child_edge in most_visited_edges[:10]:
             p_win = None if not child_edge.visit_count else round(child_edge.reward_totals[self.agent_num] / child_edge.visit_count, 3)
             color = "white"
             if (p_win or 0) > 0:
@@ -430,7 +434,7 @@ class MCTSAgent(Agent):
 
             prior = round(float(child_edge.prior_probability), 3)
             rprint("{:<8}{:<8}{:<8}[{}]{:<8}[/{}]".format(
-                child_edge.move,
+                self.environment.action_name_by_id[child_edge.move],
                 child_edge.visit_count,
                 prior,
                 color,
@@ -446,7 +450,7 @@ class MCTSAgent(Agent):
             if child_edge.visit_count > max_visited_edge.visit_count:
                 max_visited_edge = child_edge
         if settings.VERBOSITY >= 2:
-            self.display_best_move()
+            self.display_best_moves()
         return max_visited_edge.move
 
     def make_move(self):
