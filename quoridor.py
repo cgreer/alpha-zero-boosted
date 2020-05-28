@@ -99,7 +99,7 @@ def victory_distance(initial_x, initial_y, blocked_passages, winning_row):
     return -1
 
 
-def victory_distance_2(initial_x, initial_y, blocked_passages, winning_row):
+def victory_distance_heavy(initial_x, initial_y, blocked_passages, winning_row):
     # Doesn't take into account jumps.  How could you?
     visited = {(initial_x, initial_y): 0}
     queue = [(initial_x, initial_y, 0)]
@@ -127,6 +127,36 @@ def victory_distance_2(initial_x, initial_y, blocked_passages, winning_row):
             queue.append((adjacent_x, adjacent_y, adjacent_distance))
             visited[(adjacent_x, adjacent_y)] = adjacent_distance
     return -1, -1, -1, visited
+
+
+def victory_distance_lighter(initial_x, initial_y, blocked_passages, winning_row):
+    # Doesn't take into account jumps.  How could you?
+    visited = {(initial_x, initial_y): True}
+    queue = [(initial_x, initial_y, 0)]
+
+    # Biased towards going north/south first. Note that the last element is what will be searched
+    # first for the dfs, so for player 1 north is the last element to bias heading in that
+    # direction.
+    adjacent_deltas = ((0, 1), (1, 0), (-1, 0), (0, -1))
+    if winning_row == 8:
+        adjacent_deltas = ((0, -1), (-1, 0), (1, 0), (0, 1))
+
+    while queue:
+        x, y, distance = queue.pop()
+        if y == winning_row:
+            return distance
+
+        adjacent_distance = distance + 1
+        for dx, dy in adjacent_deltas:
+            adjacent_x = x + dx
+            adjacent_y = y + dy
+            if (adjacent_x, adjacent_y) in visited:
+                continue
+            if (x, y, adjacent_x, adjacent_y) in blocked_passages:
+                continue
+            queue.append((adjacent_x, adjacent_y, adjacent_distance))
+            visited[(adjacent_x, adjacent_y)] = True
+    return -1
 
 
 def victory_path(initial_x, initial_y, final_x, final_y, visited, blocked_passages):
@@ -181,7 +211,7 @@ def find_trap_walls(state):
     if state.p1_wall_count + state.p2_wall_count > 18:
         return trap_walls
 
-    distance, final_x, final_y, visited = victory_distance_2(state.p1_x, state.p1_y, state.blocked_passages, 8)
+    distance, final_x, final_y, visited = victory_distance_heavy(state.p1_x, state.p1_y, state.blocked_passages, 8)
     vic_path_reversed = victory_path(state.p1_x, state.p1_y, final_x, final_y, visited, state.blocked_passages)
     update_trap_walls(
         vic_path_reversed,
@@ -192,7 +222,7 @@ def find_trap_walls(state):
         8,
     )
 
-    distance, final_x, final_y, visited = victory_distance_2(state.p2_x, state.p2_y, state.blocked_passages, 0)
+    distance, final_x, final_y, visited = victory_distance_heavy(state.p2_x, state.p2_y, state.blocked_passages, 0)
     vic_path_reversed = victory_path(state.p2_x, state.p2_y, final_x, final_y, visited, state.blocked_passages)
     update_trap_walls(
         vic_path_reversed,
@@ -244,7 +274,7 @@ def update_trap_walls(
             # If we placed it, would it trap the player?
             # - Temporarilly update the blocked_passages that would occur if we added the wall.
             update_blocked_passages(blocked_passages, wall_x, wall_y, is_vertical, adding=True)
-            if victory_distance_2(lagging_x, lagging_y, blocked_passages, winning_row)[0] == -1:
+            if victory_distance_lighter(lagging_x, lagging_y, blocked_passages, winning_row) == -1:
                 trap_walls.add((wall_x, wall_y, is_vertical))
             update_blocked_passages(blocked_passages, wall_x, wall_y, is_vertical, adding=False)
         leading_cell_index += 1
@@ -667,7 +697,7 @@ def inspect_victory_path():
     blocked_passages = initial_blocked_passages()
     blocked_passages.add((4, 1, 4, 2))
     blocked_passages.add((4, 2, 4, 1))
-    distance, final_x, final_y, visited = victory_distance_2(initial_x, initial_y, blocked_passages, 8)
+    distance, final_x, final_y, visited = victory_distance_heavy(initial_x, initial_y, blocked_passages, 8)
     vic_path = victory_path(initial_x, initial_y, final_x, final_y, visited)
     print(vic_path)
 
