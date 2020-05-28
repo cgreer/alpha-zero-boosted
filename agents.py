@@ -360,16 +360,10 @@ class MCTSAgent(Agent):
         puct_noise_alpha,
         puct_noise_influence,
     ):
+        # Give the agent up to :num_steps and :max_seconds
         steps = 0
         st_time = time.time()
-
-        def should_continue():
-            # Use time if supplied else steps
-            if max_seconds is not None:
-                return (time.time() - st_time) < max_seconds
-            return steps < num_steps
-
-        while should_continue():
+        while (steps < num_steps) or (time.time() - st_time) < max_seconds:
             steps += 1
 
             # Select / Expand
