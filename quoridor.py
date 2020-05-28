@@ -323,7 +323,7 @@ class State:
     def unmarshall(cls, data, format="dict"):
         if format == "dict":
             instance = cls(**data)
-            instance.blocked_passages = set(instance.blocked_passages)
+            instance.blocked_passages = set(tuple(x) for x in instance.blocked_passages)
             return instance
 
 
@@ -735,7 +735,7 @@ class Environment(environment.Environment):
         return "\n".join(rows)
 
     def run(self):
-        super().run()
+        return super().run()
 
 
 def inspect_victory_path():

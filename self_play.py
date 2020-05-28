@@ -47,8 +47,8 @@ def configure_bot(environment_name, species, generation):
         feature_extractor=env_module.generate_features,
         value_model=value_model,
         policy_model=policy_model,
-        move_consideration_steps=None,
-        move_consideration_time=.1,
+        move_consideration_steps=1400,
+        move_consideration_time=0.2,
         puct_explore_factor=1.0,
         puct_noise_alpha=0.2,
         puct_noise_influence=0.25,
@@ -84,7 +84,7 @@ def run_worker(args):
         play_game(environment, agent_settings, replay_directory)
         elapsed = time.time() - st_time
         total_elapsed += elapsed
-        if i % 150 == 0:
+        if i % 20 == 0:
             print(f"GAME {i:05d}: {round(elapsed, 2)} seconds, AVERAGE: {round(total_elapsed / (i + 1), 2)} seconds")
 
     return batch, num_games
@@ -106,12 +106,13 @@ def run(environment, bot_species, bot_generation, num_games, batch, num_workers)
 
 
 if __name__ == "__main__":
-    ENVIRONMENT = "connect_four"
+    # ENVIRONMENT = "connect_four"
+    ENVIRONMENT = "quoridor"
     BOT_SPECIES = "mcts_naive"
-    BOT_GENERATION = 4 # {"HIGHEST", int}
-    BATCH = 4 # Highest + 1
-    NUM_WORKERS = 16
-    NUM_GAMES = 10_000
-    NUM_GAMES = 5 * NUM_WORKERS
+    BOT_GENERATION = 1 # {"HIGHEST", int}
+    BATCH = 1 # Highest + 1 (1 if first batch)
+    NUM_WORKERS = 10
+    NUM_GAMES = 1000
+    # NUM_GAMES = 5 * NUM_WORKERS
 
     run(ENVIRONMENT, BOT_SPECIES, BOT_GENERATION, NUM_GAMES, BATCH, NUM_WORKERS)
