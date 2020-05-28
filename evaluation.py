@@ -112,6 +112,7 @@ class Tournament:
         )
 
     def play_single_game(self, entrant_1, entrant_2):
+        print("playing game", entrant_1.bot.name, entrant_2.bot.name)
         env = self.environment()
 
         agent_1 = entrant_1.bot.agent_class(environment=env, **entrant_1.bot.agent_settings)
@@ -120,7 +121,7 @@ class Tournament:
         env.add_agent(agent_1)
         env.add_agent(agent_2)
 
-        outcomes = env.run()
+        outcomes, _ = env.run(early_stop_turns=60)
         return outcomes
 
     def head_to_head(self, num_games=100):

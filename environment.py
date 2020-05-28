@@ -79,7 +79,7 @@ class Environment(ABC):
         pass
 
     @abstractmethod
-    def run(self):
+    def run(self, early_stop_turns=None):
         # Setup board
         game_state = self.initial_state()
 
@@ -90,8 +90,12 @@ class Environment(ABC):
         # Play
         self.started_at = time.time()
         turn_count = 0
+        was_early_stopped = False
         while True:
             turn_count += 1
+            if early_stop_turns and (turn_count >= early_stop_turns):
+                was_early_stopped = True
+                break
 
             if settings.VERBOSITY >= 1:
                 rprint("\n\n====== TURN", turn_count, f"(P{game_state.whose_move + 1}) ======")
@@ -128,4 +132,4 @@ class Environment(ABC):
             rprint()
             rprint("Game Over")
             rprint(outcome)
-        return outcome
+        return outcome, was_early_stopped

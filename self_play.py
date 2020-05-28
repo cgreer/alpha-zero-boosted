@@ -55,7 +55,12 @@ def configure_bot(environment_name, species, generation):
     )
 
 
-def play_game(environment_name, agent_settings, replay_directory=None):
+def play_game(
+    environment_name,
+    agent_settings,
+    replay_directory=None,
+    early_stop_turns=60,
+):
     env_module = get_env_module(environment_name)
     environment = env_module.Environment()
 
@@ -65,7 +70,11 @@ def play_game(environment_name, agent_settings, replay_directory=None):
     # Play
     environment.add_agent(mcts_agent_1)
     environment.add_agent(mcts_agent_2)
-    environment.run()
+    _, was_early_stopped = environment.run(early_stop_turns=early_stop_turns)
+
+    # Don't save game if game was early stopped
+    if was_early_stopped:
+        return
 
     mcts_agent_1.record_replay(replay_directory)
     mcts_agent_2.record_replay(replay_directory)
@@ -90,7 +99,14 @@ def run_worker(args):
     return batch, num_games
 
 
-def run(environment, bot_species, bot_generation, num_games, batch, num_workers):
+def run(
+    environment,
+    bot_species,
+    bot_generation,
+    num_games,
+    batch,
+    num_workers,
+):
     num_worker_games = num_games // num_workers # 16 * 625 = 10K
     results = []
     with Pool(num_workers) as p:

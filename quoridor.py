@@ -406,6 +406,7 @@ class Environment(environment.Environment):
                 self.vertical_wall_action_info.append((i, x, y))
                 self.action_info.append((None, x, y, True))
                 i += 1
+
                 self.horizontal_wall_action_info.append((i, x, y))
                 self.action_info.append((None, x, y, False))
                 i += 1
@@ -763,8 +764,8 @@ class Environment(environment.Environment):
 
         return "\n".join(rows)
 
-    def run(self):
-        return super().run()
+    def run(self, early_stop_turns=None):
+        return super().run(early_stop_turns=early_stop_turns)
 
 
 def inspect_victory_path():
