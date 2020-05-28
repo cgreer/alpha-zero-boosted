@@ -196,8 +196,8 @@ class MCTSAgent(Agent):
         # :resulting_state is the observable state this agent can see.
 
         # Move game tree pointer
-        # - If the move leads to an unexpanded state then add node. This can happen if opponent
-        # makes move first or a move this agent has never considered.
+        # - If the move leads to an unexpanded state then add node. This can happen if
+        #   opponent makes move first or a move this agent has never considered.
         edge_representing_move = self.current_node.get_child_edge(move)
 
         if edge_representing_move.child_node is None:
@@ -205,14 +205,42 @@ class MCTSAgent(Agent):
             self.add_node(state=resulting_state, parent_edge=edge_representing_move)
 
         self.current_node = edge_representing_move.child_node
-        assert self.current_node is not None, "Current node must always exis"
+        assert self.current_node is not None, "Current node must always exist"
+
+        self.prune_game_search_tree()
+
+    def prune_game_search_tree(self):
+        '''
+        Remove all the considered — but unvisited — nodes/edges upstream of the
+        current node in the game tree.  These were the nodes that MCTS
+        considered, but the actions the players took didn't manifest in those
+        tree pathways.  The stats of those pathways might be useful, but it's a
+        lot of memory to keep around.
+
+        The child edges of nodes that were visited ARE RETAINED because they contain
+        the statistics (node visits) used to train the policy model.
+
+        IF YOU DO NOT DO THIS THEN YOUR MEMORY USAGE WILL ESPLODE! Some games
+        can have 1000s of moves and branching factors of 100s or more.
+        '''
+        # I am root. Ignore.
+        if self.current_node.parent_edge is None:
+            return
+
+        # Go up the tree one move and prune all the downtree nodes except the
+        # one the game ended up moving into.
+        parent_node = self.current_node.parent_edge.parent_node
+        for child_edge in parent_node.child_edges:
+            if child_edge.child_node == self.current_node:
+                continue
+            del child_edge.child_node
 
     def add_node(self, state, parent_edge):
         '''
         Create game search tree node, link to parent edge.
         '''
-        # Detect terminal once for each state and stash it instead of recalculating each time you do
-        # mcts considerations.
+        # Detect terminal once for each state and stash it instead of recalculating each
+        # time you do mcts considerations.
         is_terminal = self.environment.is_terminal(state)
 
         # Calculate allowable_actions, agent values, agent policies
