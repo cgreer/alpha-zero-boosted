@@ -48,7 +48,7 @@ class NoiseMaker:
         return noise_data[1][noise_data[0]]
 
 
-NOISE_MAKER = NoiseMaker(15_000)
+NOISE_MAKER = NoiseMaker(1000)
 
 
 @dataclass
