@@ -67,7 +67,6 @@ class GBDTValue:
         annotation_samples,
         output_path,
     ):
-        # sample_data_path in libsvm format
         samples_matrix = TreeliteDMatrix(annotation_samples)
         ann = TreeliteAnnotator()
         ann.annotate_branch(
@@ -257,10 +256,15 @@ class GBDTValue:
         print("Dumped LGBM model (JSON) here:", lightgbm_model_dump_path)
 
         # Build treelite model
-        #  - stash path in self.treelite_model_path
+        #  - Stash path in self.treelite_model_path.
+        #  - Take a random sample of validation features for treelite branch
+        #    annotations. Don't make this too big else it'll take forever and
+        #    take tons of memory.
+        num_rows = test_features.shape[0]
+        annotation_samples = test_features[numpy.random.choice(num_rows, 500_000), :]
         self.build_treelite_model(
             lightgbm_model_path,
-            annotation_samples=test_features,
+            annotation_samples=annotation_samples,
         )
 
         # Load up the just-made treelite model for use
@@ -513,9 +517,11 @@ class GBDTPolicy:
 
         # Build treelite model
         #  - stash path in self.treelite_model_path
+        num_rows = test_features.shape[0]
+        annotation_samples = test_features[numpy.random.choice(num_rows, 500_000), :]
         self.build_treelite_model(
             lightgbm_model_path,
-            annotation_samples=test_features,
+            annotation_samples=annotation_samples,
         )
 
         # Load up the just-made treelite model for use

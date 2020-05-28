@@ -50,6 +50,7 @@ def adjusted_win_rate_test(wins, losses, draws, num_bootstraps):
     print("\n{col1:<30}{col2:<30}".format(col1="NTILE", col2="AWR"))
     for ntile, pntile in zip(ntiles, p_ntiles):
         print("{ntile:<30}{pntile:<30}".format(ntile=ntile, pntile=round(pntile, 2)))
+    print()
 
 
 def games_to_play_analysis():
