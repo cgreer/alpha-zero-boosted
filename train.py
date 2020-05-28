@@ -67,7 +67,7 @@ def run(
         value_model.save(value_model_path)
         print("Saved value model to", value_model_path)
 
-        policy_model = GBDTPolicy(env.all_possible_actions())
+        policy_model = GBDTPolicy()
         policy_model.train(samples)
         policy_model.save(policy_model_path)
         print("Saved policy model to", policy_model_path)
