@@ -109,6 +109,17 @@ def samples_from_replay(
                 yield "policy", game_bucket, agent_features, policy_labels
 
 
+def iter_replay_data(replay_directory):
+    for file_name in os.listdir(replay_directory):
+        file_path = os.path.join(replay_directory, file_name)
+        try:
+            agent_replay = json.loads(open(file_path, 'r').read())
+        except Exception as e:
+            print(f"Exception JSON decoding Replay: {file_name}", e)
+            continue
+        yield agent_replay
+
+
 def generate_training_samples(
     replay_directory,
     state_class,
@@ -116,13 +127,10 @@ def generate_training_samples(
     environment,
 ):
     games_parsed = -1
-    for file_name in os.listdir(replay_directory):
+    for agent_replay in iter_replay_data(replay_directory):
         games_parsed += 1
-        if (games_parsed % 2000) == 0:
+        if (games_parsed % 1000) == 0:
             print("Replays Parsed:", games_parsed)
-
-        file_path = os.path.join(replay_directory, file_name)
-        agent_replay = json.loads(open(file_path, 'r').read())
         for sample_type, game_bucket, features, label in samples_from_replay(
             agent_replay,
             feature_extractor,
