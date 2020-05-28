@@ -1,4 +1,5 @@
-from dataclasses import dataclass
+import json
+from dataclasses import dataclass, asdict
 from typing import (
     Tuple,
     Set,
@@ -306,6 +307,24 @@ class State:
     blocked_passages: Set[Tuple] # set([(pos1_x, pos1_y, pos2_x, pos2_y])
     vertical_wall_states: List[List[int]] # [8][8]int, [pos_x][pos_y]wall_state
     horizontal_wall_states: List[List[int]] # [8][8]int, [pos_x][pos_y]wall_state
+
+    def marshall(self, format="dict"):
+        # XXX: Convert back
+        self.blocked_passages = tuple(self.blocked_passages)
+        data = asdict(self)
+        if format == "dict":
+            return data
+        elif format == "json":
+            return json.dumps(data)
+        else:
+            raise KeyError(f"Unknown format: {format}")
+
+    @classmethod
+    def unmarshall(cls, data, format="dict"):
+        if format == "dict":
+            instance = cls(**data)
+            instance.blocked_passages = set(instance.blocked_passages)
+            return instance
 
 
 def generate_features(state, agents) -> numpy.array:
