@@ -332,7 +332,35 @@ def generate_features(state, agents) -> numpy.array:
     # :agents ~ [0, 1, 2]
     # :agents ~ [0, 1, 5]
     # Which player's pov, which player is moving, is POV's player moving?
-    features = numpy.zeros((2, 1), dtype=numpy.float32)
+    features = numpy.zeros((2, 136), dtype=numpy.float32)
+
+    agent_0_features = features[0]
+    agent_1_features = features[1]
+
+    # Agent-specific features
+    agent_0_features[0] = 0.0
+    agent_1_features[0] = 1.0
+
+    # Agent-shared features
+    agent_0_features[1] = state.whose_move
+    agent_0_features[2] = state.p1_x
+    agent_0_features[3] = state.p1_y
+    agent_0_features[4] = state.p2_x
+    agent_0_features[5] = state.p2_y
+    agent_0_features[6] = state.p1_wall_count
+    agent_0_features[7] = state.p2_wall_count
+    i = 8
+    for x in (0, 1, 2, 3, 4, 5, 6, 7):
+        for y in (0, 1, 2, 3, 4, 5, 6, 7):
+            if state.vertical_wall_states[x][y] == 1:
+                agent_0_features[i] = 1
+            if state.horizontal_wall_states[x][y] == 1:
+                agent_0_features[i + 64] = 1
+            i += 1
+
+    # Copy over agent-shared features to other agent.
+    agent_1_features[1:136] = agent_0_features[1:136]
+
     return features
 
 
