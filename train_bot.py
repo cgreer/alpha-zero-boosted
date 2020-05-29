@@ -4,30 +4,27 @@ from train import run as run_model_training
 from assess import run_faceoff
 from training_info import TrainingInfo, setup_filesystem
 
-
-
-environment = "connect_four"
-# bot_species = "mcts_naive"
+environment = "quoridor"
 bot_species = "mcts_gbdt"
-batches_to_train = 2
+batches_to_train = 1
 
 training_info = TrainingInfo.load(
     environment,
     bot_species,
 )
-# training_info.save() # XXX: remove
 
-num_workers = 16
-games_per_batch = 10_000
+num_workers = 12
+
+games_per_batch = 5_000
 # games_per_batch = num_workers * 10
 
 num_faceoff_rounds = 25 # 25 rounds * 2 bots * 3 games per bot per round = 150 games
 adjusted_win_rate_threshold = .55
 
-
 for i in range(batches_to_train):
     print(f"\n\nBatch {training_info.current_batch + i} / {training_info.current_batch + batches_to_train - 1}")
     print(f"environment: {environment}, species: {bot_species}")
+    training_generation = training_info.self_play_bot_generation + 1
 
     # Ensure directories are made/etc.
     # - XXX: Not sure this actually depends on generation, but maybe it will later.
@@ -36,8 +33,6 @@ for i in range(batches_to_train):
         bot_species,
         training_info.self_play_bot_generation,
     )
-
-    training_generation = training_info.self_play_bot_generation + 1
 
     # Self play another batch
     print("\n\nSelf Play")
