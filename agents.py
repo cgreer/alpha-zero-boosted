@@ -3,12 +3,12 @@ from dataclasses import dataclass, field
 from typing import Any, List, Tuple
 import json
 import math
-import numpy
 import pathlib
 import random
 import settings
 import time
 
+import numpy
 from rich import print as rprint
 
 from text import stitch_text_blocks
@@ -454,16 +454,55 @@ class MCTSAgent(Agent):
         row_1 = stitch_text_blocks(tables, "        ")
         rprint(row_1)
 
-    def choose_best_move(self):
-        # XXX: Add noise and exploration factor
-        max_visited_edge = self.current_node.child_edges[0]
-        for child_edge in self.current_node.child_edges:
-            # XXX: Have noise tie-break
-            if child_edge.visit_count > max_visited_edge.visit_count:
-                max_visited_edge = child_edge
+    def get_current_temperature(self):
+        '''
+        From Alpha Go Zero Paper (https://doi.org/10.1038/nature24270):
+
+            Evaluation (and tournament play probably)
+                "...using an infinitesimal temperature τ→ 0 (that is, we
+                deterministically select the move with maximum visit count, to give
+                the strongest possible play)..."
+
+            Self Play
+                "For the first 30 moves of each game, the temperature is set to
+                τ = 1; this selects moves proportionally to their visit count in
+                MCTS, and ensures a diverse set of positions are encountered.
+                For the remainder of the game, an infinitesimal temperature is
+                used, τ→ 0. Additional exploration is achieved by adding
+                Dirichlet noise to the prior probabilities in the root node s0,
+                specifically P(s, a) = (1 − ε)pa + εηa, where η ∼ Dir(0.03) and
+                ε = 0.25; this noise ensures that all moves may be tried, but
+                the search may still overrule bad moves."
+        '''
+        # XXX: Adapt to number of moves.
+        return 1.0
+
+    def select_move(self):
+        temperature = self.get_current_temperature()
+        child_edges = self.current_node.child_edges
+
+        # Pre-calculate denominator for temperature adjustment
+        total_visits = 0.0
+        for child_edge in child_edges:
+            total_visits += child_edge.visit_count
+        total_visits_adjusted = total_visits**(1.0 / temperature)
+
+        # Build a weight for each edge
+        move_weights = [0.0] * len(child_edges)
+        for i, child_edge in enumerate(child_edges):
+            move_weights[i] = (child_edge.visit_count**(1.0 / temperature)) / total_visits_adjusted
+
+        # Select proportional to temperature-adjusted visits
+        # - "p" is temperature-adjusted probabilities associated with each edge
+        selected_edge = numpy.random.choice(
+            child_edges,
+            size=1,
+            replace=True,
+            p=move_weights,
+        )[0]
         if settings.VERBOSITY >= 2:
             self.display_best_moves()
-        return max_visited_edge.move
+        return selected_edge.move
 
     def make_move(self):
         self.run_mcts_considerations(
@@ -473,7 +512,7 @@ class MCTSAgent(Agent):
             puct_noise_alpha=self.puct_noise_alpha,
             puct_noise_influence=self.puct_noise_influence,
         )
-        return self.choose_best_move()
+        return self.select_move()
 
     def record_replay(self, output_dir):
         data = self.replay_data()
