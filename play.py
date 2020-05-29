@@ -46,4 +46,4 @@ for i in range(num_games):
     environment.add_agent(agent_1)
     environment.add_agent(agent_2)
 
-    environment.run(early_stop_turns=None)
+    environment.run()

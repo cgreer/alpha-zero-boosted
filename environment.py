@@ -75,11 +75,19 @@ class Environment(ABC):
         pass
 
     @abstractmethod
+    def early_stopped_rewards(self, state):
+        pass
+
+    @abstractmethod
+    def early_stopping_round(self):
+        pass
+
+    @abstractmethod
     def text_display(self, state):
         pass
 
     @abstractmethod
-    def run(self, early_stop_turns=None):
+    def run(self):
         # Setup board
         game_state = self.initial_state()
 
@@ -91,9 +99,10 @@ class Environment(ABC):
         self.started_at = time.time()
         turn_count = 0
         was_early_stopped = False
+        early_stopping_round = self.early_stopping_round()
         while True:
             turn_count += 1
-            if early_stop_turns and (turn_count >= early_stop_turns):
+            if early_stopping_round and (turn_count >= early_stopping_round):
                 was_early_stopped = True
                 break
 
@@ -127,7 +136,12 @@ class Environment(ABC):
 
         # Game Over
         self.ended_at = time.time()
-        outcome = self.rewards(game_state)
+
+        if was_early_stopped:
+            outcome = self.early_stopped_rewards(game_state)
+        else:
+            outcome = self.rewards(game_state)
+
         if settings.VERBOSITY >= 1:
             rprint()
             rprint("Game Over")

@@ -49,9 +49,6 @@ for i in range(5):
     environment.add_agent(human_agent_1)
     environment.run()
 
-    # mcts_agent_1.record_replay('./recorded_games/')
-    # mcts_agent_2.record_replay('./recorded_games/')
-
 '''
 # Setup some environments (aka games)
 environment = leftright.Environment(board_length=35)

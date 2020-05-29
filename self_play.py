@@ -59,7 +59,6 @@ def play_game(
     environment_name,
     agent_settings,
     replay_directory=None,
-    early_stop_turns=60,
 ):
     env_module = get_env_module(environment_name)
     environment = env_module.Environment()
@@ -70,14 +69,10 @@ def play_game(
     # Play
     environment.add_agent(mcts_agent_1)
     environment.add_agent(mcts_agent_2)
-    _, was_early_stopped = environment.run(early_stop_turns=early_stop_turns)
+    _, was_early_stopped = environment.run()
 
-    # Don't save game if game was early stopped
-    if was_early_stopped:
-        return
-
-    mcts_agent_1.record_replay(replay_directory)
-    mcts_agent_2.record_replay(replay_directory)
+    mcts_agent_1.record_replay(replay_directory, was_early_stopped)
+    mcts_agent_2.record_replay(replay_directory, was_early_stopped)
 
 
 def run_worker(args):

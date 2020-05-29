@@ -121,7 +121,7 @@ class Tournament:
         env.add_agent(agent_1)
         env.add_agent(agent_2)
 
-        outcomes, _ = env.run(early_stop_turns=60)
+        outcomes, _ = env.run()
         return outcomes
 
     def head_to_head(self, num_games=100):

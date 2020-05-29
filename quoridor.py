@@ -685,6 +685,14 @@ class Environment(environment.Environment):
             return [-1, 1]
         return [0, 0]
 
+    def early_stopped_rewards(self, state):
+        # Count as draw
+        # XXX: Better to count as losses?
+        return [0, 0]
+
+    def early_stopping_round(self):
+        return 80
+
     def text_display(self, state):
         '''
         · · · · · · · · · · · · · · · · · · ·
@@ -764,8 +772,8 @@ class Environment(environment.Environment):
 
         return "\n".join(rows)
 
-    def run(self, early_stop_turns=None):
-        return super().run(early_stop_turns=early_stop_turns)
+    def run(self):
+        return super().run()
 
 
 def inspect_victory_path():

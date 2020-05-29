@@ -514,8 +514,8 @@ class MCTSAgent(Agent):
         )
         return self.select_move()
 
-    def record_replay(self, output_dir):
-        data = self.replay_data()
+    def record_replay(self, output_dir, was_early_stopped):
+        data = self.replay_data(was_early_stopped)
         game_id = data["id"]
         agent_num = data["agent"]["agent_num"]
 
@@ -538,7 +538,7 @@ class MCTSAgent(Agent):
                 break
             node = node.get_child_edge(move).child_node
 
-    def replay_data(self):
+    def replay_data(self, was_early_stopped):
         env = self.environment
         replay = []
         for game_tree_node, move in self.iter_replayed_game_tree_history():
@@ -558,6 +558,12 @@ class MCTSAgent(Agent):
                 move=move,
             ))
 
+        final_state = env.event_history[-1][0]
+        if was_early_stopped:
+            outcome = env.early_stopped_rewards(final_state)
+        else:
+            outcome = env.rewards(final_state)
+
         data = dict(
             id=env.id,
             name=env.get_name(),
@@ -568,9 +574,7 @@ class MCTSAgent(Agent):
                 agent_num=self.agent_num,
                 model_version=-1, # XXX Update model-specific info
             ),
-            outcome=env.rewards(env.event_history[-1][0]), # state of last (s, a) event
+            outcome=outcome,
             replay=replay,
         )
-        # import pprint
-        # pprint.pprint(data)
         return data
