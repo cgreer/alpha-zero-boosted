@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from rich import print as rprint
 from typing import Any, List, Tuple
 import json
 import math
@@ -9,6 +8,10 @@ import pathlib
 import random
 import settings
 import time
+
+from rich import print as rprint
+
+from text import stitch_text_blocks
 
 
 @dataclass
@@ -420,27 +423,36 @@ class MCTSAgent(Agent):
 
     def display_best_moves(self):
 
+        def build_table(child_edges):
+            ttext = "{:<8}{:<8}{:<8}{:<8}".format("MOVE", "VISITS", "PRIOR", "P(WIN)\n")
+            for child_edge in child_edges:
+                p_win = None if not child_edge.visit_count else round(child_edge.reward_totals[self.agent_num] / child_edge.visit_count, 3)
+                color = "white"
+                if (p_win or 0) > 0:
+                    color = "green"
+                elif (p_win or 0) < 0:
+                    color = "red"
+                prior = round(float(child_edge.prior_probability), 3)
+                ttext += "{:<8}{:<8}{:<8}[{}]{:<8}[/{}]\n".format(
+                    self.environment.action_name_by_id[child_edge.move],
+                    child_edge.visit_count,
+                    prior,
+                    color,
+                    (p_win or "-"),
+                    color,
+                )
+            return ttext
+
         most_visited_edges = [(ce.visit_count, i, ce) for i, ce in enumerate(self.current_node.child_edges)] # (num_visits, edge)
         most_visited_edges.sort(reverse=True)
+        most_visited_edges = [x[2] for x in most_visited_edges]
 
-        print("\n{:<8}{:<8}{:<8}{:<8}".format("MOVE", "VISITS", "PRIOR", "P(WIN)"))
-        for _, _, child_edge in most_visited_edges[:10]:
-            p_win = None if not child_edge.visit_count else round(child_edge.reward_totals[self.agent_num] / child_edge.visit_count, 3)
-            color = "white"
-            if (p_win or 0) > 0:
-                color = "green"
-            elif (p_win or 0) < 0:
-                color = "red"
-
-            prior = round(float(child_edge.prior_probability), 3)
-            rprint("{:<8}{:<8}{:<8}[{}]{:<8}[/{}]".format(
-                self.environment.action_name_by_id[child_edge.move],
-                child_edge.visit_count,
-                prior,
-                color,
-                (p_win or "-"),
-                color,
-            ))
+        tables = []
+        tables.append(build_table(most_visited_edges[:10]))
+        if len(most_visited_edges) > 10:
+            tables.append(build_table(most_visited_edges[10:20]))
+        row_1 = stitch_text_blocks(tables, "        ")
+        rprint(row_1)
 
     def choose_best_move(self):
         # XXX: Add noise and exploration factor
