@@ -11,6 +11,22 @@ import numpy
 SPEAK = 0
 
 
+class BootstrapValue:
+    def predict(self, features):
+        # :features ~ [(0, 1, ...), ...]
+        values = []
+        for feature_set in features:
+            if feature_set[0] < 0.5:
+                your_distance = (8.0 - feature_set[3]) / 8.0
+                opponent_distance = feature_set[5] / 8.0
+            else:
+                your_distance = feature_set[5] / 8.0
+                opponent_distance = (8.0 - feature_set[3]) / 8.0
+            value = (opponent_distance - your_distance) * .25
+            values.append(value)
+        return values
+
+
 def update_blocked_passages(
     blocked_passages,
     x,
