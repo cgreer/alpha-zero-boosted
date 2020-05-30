@@ -629,7 +629,10 @@ class Environment(environment.Environment):
             return self.action_id_by_wall_info[(x, y, is_vertical)]
 
     def all_possible_actions(self):
-        return tuple(range(8 + 8 * 8))
+        # 4 moves, 4 jumps, 64 vertical walls, 64 horizontal
+        # XXX: assert this matches up with other actions when you modify it else
+        # the policy model will be messed up without you knowing.
+        return tuple(range(8 + 64 + 64))
 
     def enumerate_actions(self, state):
         actions = []
