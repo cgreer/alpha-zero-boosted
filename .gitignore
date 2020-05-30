@@ -2,3 +2,4 @@
 __pycache*
 *.prof
 *.swo
+*.npy
