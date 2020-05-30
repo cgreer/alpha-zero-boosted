@@ -122,7 +122,8 @@ class Environment(ABC):
             agent_to_move = self.agents[game_state.whose_move]
             move = agent_to_move.make_move()
             if settings.VERBOSITY >= 1:
-                rprint(f"\nAgent {agent_to_move.agent_num} chose [bold green]{move}[/bold green]")
+                human_readable_move = self.action_name_by_id[move]
+                rprint(f"\nAgent {agent_to_move.agent_num} chose [bold green]{human_readable_move}[/bold green]")
 
             # Advance game state
             # - Record action first before transitioning
