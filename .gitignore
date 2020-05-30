@@ -3,3 +3,4 @@ __pycache*
 *.prof
 *.swo
 *.npy
+adhoc.py
