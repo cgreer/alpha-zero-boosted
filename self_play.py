@@ -85,7 +85,10 @@ def run_worker(args):
     total_elapsed = 0.0
     for i in range(num_games):
         st_time = time.time()
-        play_game(environment, agent_settings, replay_directory)
+        try:
+            play_game(environment, agent_settings, replay_directory)
+        except Exception as e:
+            print("GAME FAILED:", e)
         elapsed = time.time() - st_time
         total_elapsed += elapsed
         if i % 20 == 0:
