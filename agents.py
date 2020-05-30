@@ -475,7 +475,7 @@ class MCTSAgent(Agent):
                 the search may still overrule bad moves."
         '''
         # XXX: Adapt to number of moves.
-        return .5
+        return .3
 
     def select_move(self):
         child_edges = self.current_node.child_edges
