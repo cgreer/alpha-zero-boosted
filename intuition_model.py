@@ -1,30 +1,16 @@
-import time
 from collections import defaultdict
 from dataclasses import dataclass
 import json
-import sys
 import typing
 import random
-from uuid import uuid4
-import settings
-import shutil
-import itertools
-import pprint
 
-from training_samples import split_train_test
-
-from rich import print as rprint
-import lightgbm
 import numpy
 from treelite.runtime import (
-    Predictor as TreelitePredictor,
     Batch as TreeliteBatch,
 )
-from treelite import (
-    Model as TreeliteModel,
-    Annotator as TreeliteAnnotator,
-    DMatrix as TreeliteDMatrix,
-)
+
+from training_samples import split_train_test
+from gbdt_model import GBDTModel
 
 
 class UnopinionatedValue:
@@ -43,232 +29,20 @@ class UniformPolicy:
 
 
 @dataclass
-class GBDTValue:
-    treelite_model_path: typing.Any = None
-    treelite_predictor: typing.Any = None
+class GBDTValue(GBDTModel):
 
-    def save(self, output_path):
-        if self.treelite_model_path is None:
-            raise RuntimeError("Model hasn't been created/loaded, can't save elsewhere.")
-
-        # Copy the current dylib file (which might be temporary path) to another location
-        shutil.copyfile(self.treelite_model_path, output_path)
-
-    def load(self, model_path, nthread=1):
-        self.treelite_model_path = model_path
-        self.treelite_predictor = TreelitePredictor(
-            model_path,
-            nthread=nthread,
-        )
-
-    def build_annotation_data(
-        self,
-        model,
-        annotation_samples,
-        output_path,
-    ):
-        samples_matrix = TreeliteDMatrix(annotation_samples)
-        ann = TreeliteAnnotator()
-        ann.annotate_branch(
-            model=model,
-            dmat=samples_matrix,
-            verbose=False,
-        )
-        ann.save(path=output_path)
-        print("Saved branch annotations in", output_path)
-        return output_path
-
-    def build_treelite_model(
-        self,
-        gbdt_model_path,
-        model_format="lightgbm",
-        annotation_samples=None,
-    ):
-        treelite_model = TreeliteModel.load(
-            gbdt_model_path,
-            model_format=model_format,
-        )
-
-        # Build up branch expectations from data samples
-        annotation_results_path = None
-        if annotation_samples is not None:
-            tmp_annotation_info = f"{settings.TMP_DIRECTORY}/treelite_ann-{str(uuid4())}.info"
-            annotation_results_path = self.build_annotation_data(
-                treelite_model,
-                annotation_samples,
-                tmp_annotation_info,
-            )
-
-        # Compile model to C++
-        params = dict(
-            parallel_comp=14,
-            # quantize=1, # Supposed to speed up predictions. Didn't when I tried it.
-        )
-        if annotation_results_path is not None:
-            params["annotate_in"] = annotation_results_path
-
-        # Save DLL
-        self.treelite_model_path = f"{settings.TMP_DIRECTORY}/model-{str(uuid4())}.dylib"
-        treelite_model.export_lib(
-            toolchain="clang", # clang for MacOS, gcc for unix?
-            libpath=self.treelite_model_path,
-            verbose=False,
-            params=params,
-        )
-        print(f"Trained a treelite model: {self.treelite_model_path}")
-        return self.treelite_model_path
-
-    def stash_training_data(
-        self,
-        train_features,
-        train_labels,
-        test_features,
-        test_labels,
-    ):
-        base_path = f"{settings.TMP_DIRECTORY}/value_model-{str(uuid4())}_"
-        train_path = f"{base_path}train_features.npy"
-        train_labels_path = f"{base_path}train_labels.npy"
-        test_path = f"{base_path}test_features.npy"
-        test_labels_path = f"{base_path}test_labels.npy"
-        numpy.save(train_path, train_features)
-        numpy.save(train_labels_path, train_labels)
-        numpy.save(test_path, test_features)
-        numpy.save(test_labels_path, test_labels)
-        print("\nSTASHING TRAINING DATA")
-        for p in (train_path, train_labels_path, test_path, test_labels_path):
-            print(p)
-
-    @classmethod
-    def load_stashed_training_data(self, base_path):
-        train_path = f"{base_path}train_features.npy"
-        train_labels_path = f"{base_path}train_labels.npy"
-        test_path = f"{base_path}test_features.npy"
-        test_labels_path = f"{base_path}test_labels.npy"
-
-        train_features = numpy.load(train_path)
-        train_labels = numpy.load(train_labels_path)
-        test_features = numpy.load(test_path)
-        test_labels = numpy.load(test_labels_path)
-
-        return train_features, train_labels, test_features, test_labels
+    def extract_training_observations(self, game_samples, test_fraction):
+        # :samples ~ dict(meta_info=..., features=..., labels=...)
+        return split_train_test(game_samples, test_fraction)
 
     def train(self, samples, test_fraction=.2):
-        # Each set ~ [(features, label), ...]
-        #  - features ~ (0, 1, .7, ...)
-        #  - label is {-1, 0, 1}
-        train_set, test_set = split_train_test(samples, test_fraction, "value")
-
-        print(f"Building Train Matrix from {len(train_set)} positions")
-        train_features = numpy.array(tuple(numpy.array(x[0]) for x in train_set))
-        train_labels = numpy.array(tuple(x[1] for x in train_set))
-
-        print(f"Building Test Matrix from {len(test_set)} positions")
-        test_features = numpy.array(tuple(numpy.array(x[0]) for x in test_set))
-        test_labels = numpy.array(tuple(x[1] for x in test_set))
-
-        # Stash the data so we can reload it later to easily tweak with stuff
-        self.stash_training_data(train_features, train_labels, test_features, test_labels)
-
-        # Train lgbm model/treelite model
-        self.train_from_training_data(
-            train_features,
-            train_labels,
-            test_features,
-            test_labels,
+        # :samples ~ dict(meta_info=..., features=..., labels=...)
+        super().train(
+            objective="mean_squared_error",
+            eval_metrics=["mean_squared_error", "mae"],
+            samples=samples,
+            test_fraction=test_fraction,
         )
-
-    def train_from_training_data(
-        self,
-        train_features,
-        train_labels,
-        test_features,
-        test_labels,
-    ):
-        train_data = lightgbm.Dataset(train_features, label=train_labels)
-        test_data = lightgbm.Dataset(test_features, label=test_labels)
-
-        num_round = 15000
-        early_stopping_rounds = 10
-        # learning_rate_fxn=lambda x: (lr - lrs) + (lrs * (lrsh ** x)),  # Start with a higher learning rate and adjust lower over time
-        learning_rate = 0.15
-        learning_rate_fxn = lambda x: learning_rate # noqa
-
-        # bagging_fractions = [.05, .1, .2, .3, .4]
-        # bagging_freqs = [5, 10, 20, 30]
-        # num_leaves_choices = [2**7, 2**8, 2**9, 2**10, 2**11]
-
-        bagging_fractions = [.2]
-        bagging_freqs = [10]
-        num_leaves_choices = [2**8]
-
-        # Best, but treelite trains slowly so beware
-        # bagging_fractions = [.3]
-        # bagging_freqs = [20]
-        # num_leaves_choices = [2**11]
-
-        for (
-            bagging_fraction,
-            bagging_freq,
-            num_leaves,
-        ) in itertools.product(
-            bagging_fractions,
-            bagging_freqs,
-            num_leaves_choices
-        ):
-            params = {
-                'objective': 'mean_squared_error', # aka L2, rmse.  XXX Why same as root?
-                'boosting': "gbdt",  # gbdt is slower but better accuracy, goss is faster (but only slightly)
-                'metric': ["mean_squared_error", "mae"],
-                'bagging_fraction': bagging_fraction,
-                'bagging_freq': bagging_freq,
-                'learning_rate': learning_rate,  # This is overriden in the case where dynamic learning_rates are specified below
-                'num_leaves': num_leaves,
-                # 'max_depth': 3,
-                'max_bin': 128,
-                'min_data_in_leaf': 10,
-                'num_threads': 16,  # 0 is as many as CPUs for server
-                # 'min_gain_to_split': 0.01,
-                'verbose': 1,
-            }
-
-            print("\nTraining")
-            lightgbm_booster = lightgbm.train(
-                params,
-                train_data,
-                num_round,
-                valid_sets=[train_data, test_data],
-                learning_rates=learning_rate_fxn,
-                early_stopping_rounds=early_stopping_rounds, # Stops if ANY metric in metrics doesn't improve in N rounds
-            )
-
-            print("\nTrained with following params:")
-            pprint.pprint(params)
-
-        # Save lightgbm model to disk so treelite can load it
-        lightgbm_model_path = f"{settings.TMP_DIRECTORY}/lightgbm-{str(uuid4())}.model"
-        lightgbm_booster.save_model(lightgbm_model_path)
-        print("Dumped LGBM model here:", lightgbm_model_path)
-
-        model_dict = lightgbm_booster.dump_model()
-        lightgbm_model_dump_path = f"{settings.TMP_DIRECTORY}/lightgbm-{str(uuid4())}.json"
-        with open(lightgbm_model_dump_path, 'w') as f:
-            f.write(json.dumps(model_dict))
-        print("Dumped LGBM model (JSON) here:", lightgbm_model_dump_path)
-
-        # Build treelite model
-        #  - Stash path in self.treelite_model_path.
-        #  - Take a random sample of validation features for treelite branch
-        #    annotations. Don't make this too big else it'll take forever and
-        #    take tons of memory.
-        num_rows = test_features.shape[0]
-        annotation_samples = test_features[numpy.random.choice(num_rows, 500_000), :]
-        self.build_treelite_model(
-            lightgbm_model_path,
-            annotation_samples=annotation_samples,
-        )
-
-        # Load up the just-made treelite model for use
-        self.load(self.treelite_model_path)
 
     def predict(self, features) -> numpy.array:
         # :features ~ [features_1, features_2, ...]
@@ -276,256 +50,53 @@ class GBDTValue:
         # return self.treelite_predictor.predict(batch).item(0)
         return self.treelite_predictor.predict(TreeliteBatch.from_npy2d(features)).tolist()
 
-    def predict_instance(self, features):
-        # This goes much slower than just passing a batch of 1 in above...
-        return self.treelite_predictor.predict_instance(features)
-
 
 @dataclass
-class GBDTPolicy:
-    treelite_model_path: typing.Any = None
-    treelite_predictor: typing.Any = None
+class GBDTPolicy(GBDTModel):
 
-    def save(self, output_path):
-        if self.treelite_model_path is None:
-            raise RuntimeError("Model hasn't been created/loaded, can't save elsewhere.")
+    def extract_policy_observations(self, features, labels):
+        # features ~ [[0.0, 1.0, ...], ...]
+        # labels ~ [[.01, .92, .001, ...], ...]
 
-        # Copy the current dylib file (which might be temporary path) to another location
-        shutil.copyfile(self.treelite_model_path, output_path)
-
-    def load(self, model_path, nthread=1):
-        self.treelite_model_path = model_path
-        self.treelite_predictor = TreelitePredictor(
-            model_path,
-            nthread=nthread,
-        )
-
-    def build_annotation_data(
-        self,
-        model,
-        annotation_samples,
-        output_path,
-    ):
-        # sample_data_path in libsvm format
-        samples_matrix = TreeliteDMatrix(annotation_samples)
-        ann = TreeliteAnnotator()
-        ann.annotate_branch(
-            model=model,
-            dmat=samples_matrix,
-            verbose=False,
-        )
-        ann.save(path=output_path)
-        print("Saved branch annotations in", output_path)
-        return output_path
-
-    def build_treelite_model(
-        self,
-        gbdt_model_path,
-        model_format="lightgbm",
-        annotation_samples=None,
-    ):
-        treelite_model = TreeliteModel.load(
-            gbdt_model_path,
-            model_format=model_format,
-        )
-
-        # Build up branch expectations from data samples
-        annotation_results_path = None
-        if annotation_samples is not None:
-            tmp_annotation_info = f"{settings.TMP_DIRECTORY}/treelite_ann-{str(uuid4())}.info"
-            annotation_results_path = self.build_annotation_data(
-                treelite_model,
-                annotation_samples,
-                tmp_annotation_info,
-            )
-
-        # Compile model to C/C++
-        params = dict(
-            parallel_comp=14,
-            # quantize=1, # Supposed to speed up predictions. Didn't when I tried it.
-        )
-        if annotation_results_path is not None:
-            params["annotate_in"] = annotation_results_path
-
-        # Save DLL
-        self.treelite_model_path = f"{settings.TMP_DIRECTORY}/model-{str(uuid4())}.dylib"
-        treelite_model.export_lib(
-            toolchain="clang", # clang for MacOS, gcc for unix?
-            libpath=self.treelite_model_path,
-            verbose=False,
-            params=params,
-        )
-        print(f"Trained a treelite model: {self.treelite_model_path}")
-        return self.treelite_model_path
-
-    def stash_training_data(
-        self,
-        train_features,
-        train_labels,
-        test_features,
-        test_labels,
-    ):
-        base_path = f"{settings.TMP_DIRECTORY}/policy_model-{str(uuid4())}_"
-        train_path = f"{base_path}train_features.npy"
-        train_labels_path = f"{base_path}train_labels.npy"
-        test_path = f"{base_path}test_features.npy"
-        test_labels_path = f"{base_path}test_labels.npy"
-        numpy.save(train_path, train_features)
-        numpy.save(train_labels_path, train_labels)
-        numpy.save(test_path, test_features)
-        numpy.save(test_labels_path, test_labels)
-        print("\nSTASHING TRAINING DATA")
-        for p in (train_path, train_labels_path, test_path, test_labels_path):
-            print(p)
-
-    @classmethod
-    def load_stashed_training_data(self, base_path):
-        train_path = f"{base_path}train_features.npy"
-        train_labels_path = f"{base_path}train_labels.npy"
-        test_path = f"{base_path}test_features.npy"
-        test_labels_path = f"{base_path}test_labels.npy"
-
-        train_features = numpy.load(train_path)
-        train_labels = numpy.load(train_labels_path)
-        test_features = numpy.load(test_path)
-        test_labels = numpy.load(test_labels_path)
-
-        return train_features, train_labels, test_features, test_labels
-
-    def extract_policy_observations(self, position_samples):
-        '''
-        features = [move, features]
-        label = label
-        '''
+        # Make a training instance for every label in policy labels by
+        # prepending the features for the state with the action id.
+        # XXX: This will be SLOOOW. Do better. Use hstack.
         observation_features = []
         observation_labels = []
-        for position_features, mcts_labels in position_samples:
-            for i, mcts_label in enumerate(mcts_labels):
-                features = numpy.concatenate(([i], position_features))
-                observation_features.append(features)
+        for row_index in range(features.shape[0]):
+            for i, mcts_label in enumerate(labels[row_index]):
+                policy_features = numpy.concatenate(([i], features[row_index]))
+                observation_features.append(policy_features)
                 observation_labels.append(mcts_label)
+
         return (
             numpy.array(observation_features, dtype=numpy.float32),
             numpy.array(observation_labels, dtype=numpy.float32)
         )
 
-    def train(self, samples, test_fraction=.2):
-        # :samples ~ [(features, labels), ...], for every position in every game.
-        #  - features ~ (0, 1, .7, ...)
-        #  - labels ~ (0.0, 0.1, .6, ...), summing up to 1.0
-
-        # Each set has same structure as :samples, just partitioned into games that are in the
-        # training set and games that are in the test set.
-        train_set, test_set = split_train_test(samples, test_fraction, "policy")
+    def extract_training_observations(self, game_samples, test_fraction):
+        train_features, train_labels, test_features, test_labels = split_train_test(game_samples, test_fraction)
 
         # Make policy samples for each label in (features, labels) pairs
-        train_features, train_labels = self.extract_policy_observations(train_set)
-        test_features, test_labels = self.extract_policy_observations(test_set)
+        print("\nBuilding policy training observations. Sit tight.")
+        train_features, train_labels = self.extract_policy_observations(train_features, train_labels)
+        test_features, test_labels = self.extract_policy_observations(test_features, test_labels)
 
-        print("train features", train_features[:10])
-        print("train labels", train_labels[:10])
-
-        # Stash the data so we can reload it later to easily tweak with stuff
-        self.stash_training_data(train_features, train_labels, test_features, test_labels)
-
-        # Train lgbm model/treelite model
-        self.train_from_training_data(
+        return (
             train_features,
             train_labels,
             test_features,
-            test_labels,
+            test_labels
         )
 
-    def train_from_training_data(
-        self,
-        train_features,
-        train_labels,
-        test_features,
-        test_labels,
-    ):
-        train_data = lightgbm.Dataset(train_features, label=train_labels)
-        test_data = lightgbm.Dataset(test_features, label=test_labels)
-
-        num_round = 15000
-        early_stopping_rounds = 10
-        learning_rate = 0.15
-        learning_rate_fxn = lambda x: learning_rate # noqa
-        # learning_rate_fxn=lambda x: (lr - lrs) + (lrs * (lrsh ** x)),  # Start with a higher learning rate and adjust lower over time
-
-        # bagging_fractions = [.05, .1, .2, .3, .4]
-        # bagging_freqs = [5, 10, 20, 30]
-        # num_leaves_choices = [2**7, 2**8, 2**9, 2**10, 2**11]
-
-        bagging_fractions = [.2]
-        bagging_freqs = [10]
-        num_leaves_choices = [2**8]
-
-        # Best, but treelite trains slowly so beware
-        # bagging_fractions = [.3]
-        # bagging_freqs = [20]
-        # num_leaves_choices = [2**11]
-
-        for (
-            bagging_fraction,
-            bagging_freq,
-            num_leaves,
-        ) in itertools.product(
-            bagging_fractions,
-            bagging_freqs,
-            num_leaves_choices
-        ):
-            params = {
-                'objective': 'cross_entropy', # aka xentropy
-                'boosting': "gbdt",  # gbdt is slower but better accuracy, goss is faster (but only slightly)
-                'metric': ["cross_entropy", "mae"],
-
-                'bagging_fraction': bagging_fraction,
-                'bagging_freq': bagging_freq,
-                'learning_rate': learning_rate,  # This is overriden in the case where dynamic learning_rates are specified below
-                'num_leaves': num_leaves,
-                'max_bin': 128,
-                'min_data_in_leaf': 10,
-                'num_threads': 16,  # 0 is as many as CPUs for server
-                'verbose': 1,
-                # 'max_depth': 3,
-                # 'min_gain_to_split': 0.01,
-            }
-
-            print("\nTraining")
-            lightgbm_booster = lightgbm.train(
-                params,
-                train_data,
-                num_round,
-                valid_sets=[train_data, test_data],
-                learning_rates=learning_rate_fxn,
-                early_stopping_rounds=early_stopping_rounds, # Stops if ANY metric in metrics doesn't improve in N rounds
-            )
-
-            print("\nTrained with following params:")
-            pprint.pprint(params)
-
-        # Save lightgbm model to disk so treelite can load it
-        lightgbm_model_path = f"{settings.TMP_DIRECTORY}/lightgbm-{str(uuid4())}.model"
-        lightgbm_booster.save_model(lightgbm_model_path)
-        print("Dumped LGBM model here:", lightgbm_model_path)
-
-        model_dict = lightgbm_booster.dump_model()
-        lightgbm_model_dump_path = f"{settings.TMP_DIRECTORY}/lightgbm-{str(uuid4())}.json"
-        with open(lightgbm_model_dump_path, 'w') as f:
-            f.write(json.dumps(model_dict))
-        print("Dumped LGBM model (JSON) here:", lightgbm_model_dump_path)
-
-        # Build treelite model
-        #  - stash path in self.treelite_model_path
-        num_rows = test_features.shape[0]
-        annotation_samples = test_features[numpy.random.choice(num_rows, 500_000), :]
-        self.build_treelite_model(
-            lightgbm_model_path,
-            annotation_samples=annotation_samples,
+    def train(self, samples, test_fraction=.2):
+        # :samples ~ dict(meta_info=..., features=..., labels=...)
+        super().train(
+            objective="cross_entropy",
+            eval_metrics=["cross_entropy", "mae"],
+            samples=samples,
+            test_fraction=test_fraction,
         )
-
-        # Load up the just-made treelite model for use
-        self.load(self.treelite_model_path)
 
     def predict(self, agent_features, allowable_actions):
         # :agent_features ~ array[0, 1, 0, 7, ....]
@@ -580,6 +151,7 @@ class NaiveValue:
         self.state_wins = {tuple(key): int(value) for (key, value) in data["state_wins"]}
 
     def train(self, samples, test_fraction=.2):
+        raise RuntimeError("Broken")
         train_set, test_set = split_train_test(samples, test_fraction, "value")
 
         # "Train"
@@ -683,153 +255,5 @@ class NaivePolicy:
             return [uniform_probability] * len(allowable_actions)
 
 
-def train_naive_models():
-    from tictactoe import Environment, State, generate_features # noqa
-    import pprint # noqa
-    from train import generate_training_samples
-
-    env = Environment()
-    replay_directory = sys.argv[1]
-    samples = list(
-        generate_training_samples(
-            replay_directory,
-            State,
-            generate_features,
-            env,
-        )
-    )
-
-    value_model = NaiveValue()
-    value_model.train(samples)
-    value_model.save("./ttt_naive_value.model")
-    value_model.load("./ttt_naive_value.model")
-
-    policy_model = NaivePolicy()
-    policy_model.train(samples)
-    policy_model.save("./ttt_naive_policy.model")
-    policy_model.load("./ttt_naive_policy.model")
-
-    # Show value/policy for first N possible moves of game
-    for pos in range(9):
-        s = State(tuple(1 if x == pos else 0 for x in range(9)), 1)
-        features = generate_features(s, 1)
-        allowable_actions = env.enumerate_actions(s)
-
-        value = value_model.predict(features)
-        move_probabilities = policy_model.predict(features, allowable_actions)
-        print()
-        print(env.text_display(s))
-        print(value)
-        pprint.pprint(move_probabilities)
-
-
-def train_connect_4():
-    import connect_four # noqa
-    import pprint # noqa
-    from train import generate_training_samples
-
-    env_class = connect_four
-    env = env_class.Environment()
-    replay_directory = sys.argv[1]
-    samples = list(
-        generate_training_samples(
-            replay_directory,
-            env_class.State,
-            env_class.generate_features,
-            env,
-        )
-    )
-
-    print("Samples:", len(samples))
-
-    value_model = NaiveValue()
-    value_model.train(samples)
-    value_model.save("./c4_naive_value.model")
-    value_model.load("./c4_naive_value.model")
-
-    policy_model = NaivePolicy()
-    policy_model.train(samples)
-    policy_model.save("./c4_naive_policy.model")
-    policy_model.load("./c4_naive_policy.model")
-
-    s_initial = env.initial_state()
-    allowable_actions = env.enumerate_actions(s_initial)
-    for action in allowable_actions:
-        s_prime = env.transition_state(s_initial, action)
-        features = env_class.generate_features(s_prime, 1)
-        allowable_actions = env.enumerate_actions(s_prime)
-
-        value = value_model.predict(features)
-        move_probabilities = policy_model.predict(features, allowable_actions)
-        print()
-        rprint(env.text_display(s_prime))
-        print(value)
-        pprint.pprint(move_probabilities)
-
-
-def test_gbdt():
-    import connect_four # noqa
-    from train import generate_training_samples
-    env_class = connect_four
-    env = env_class.Environment()
-
-    replay_directory = sys.argv[1]
-    samples = list(
-        generate_training_samples(
-            replay_directory,
-            env_class.State,
-            env_class.generate_features,
-            env,
-        )
-    )
-
-    print("Samples:", len(samples))
-
-    value_model = GBDTValue()
-    value_model.train(samples)
-    value_model.save('./treelite-model.dylib') # must have dylib suffix
-    value_model.load('./treelite-model.dylib')
-
-
-def test_treelite_predictions():
-    import connect_four # noqa
-    from train import generate_training_samples
-    env_class = connect_four
-    env = env_class.Environment()
-
-    replay_directory = sys.argv[1]
-    samples = list(
-        generate_training_samples(
-            replay_directory,
-            env_class.State,
-            env_class.generate_features,
-            env,
-        )
-    )
-
-    value_model = GBDTValue()
-    value_model.load('./treelite-model.dylib')
-
-    state_features = [numpy.array(x[1], dtype=numpy.float32) for x in samples if x[0] == "value"]
-    state_features = numpy.array(state_features, dtype=numpy.float32)
-    # state_features = state_features[:10]
-
-    st_time = time.time()
-    value_model.predict(state_features, batch_mode=True)
-    elapsed = time.time() - st_time
-    print("took", elapsed, "seconds")
-    print("p/s", len(state_features) / elapsed)
-
-    st_time = time.time()
-    for features in state_features:
-        value_model.predict(features)
-    elapsed = time.time() - st_time
-    print("took", elapsed, "seconds")
-    print("p/s", len(state_features) / elapsed)
-
-
 if __name__ == "__main__":
-    # test_gbdt()
-    test_treelite_predictions()
-    # train_naive_models()
-    # train_connect_4()
+    pass

@@ -1,8 +1,11 @@
 import os
 import json
+from hashlib import md5
+
+import numpy
 
 
-def split_train_test(samples, test_fraction, only_of_type):
+def split_train_test(game_samples, test_fraction):
     '''
     Partition the games into training and test games. Positions from a game that are
     in the training set should not be in the test set.
@@ -11,30 +14,34 @@ def split_train_test(samples, test_fraction, only_of_type):
     it'll be easy for a model to overfit without early stopping catching it by memorizing
     non-generalizable aspects of a particular game.
 
-    :test_fraction ~ [0.0, 1.0]
+    :test_fraction in range [0.0, 1.0]
     '''
+    meta_info = game_samples["meta"]
+    features = game_samples["features"]
+    labels = game_samples["labels"]
+    assert meta_info.shape[0] == features.shape[0] == labels.shape[0]
+
     # Convert test fraction to percentage from 0-100
     rounded_test_percentage = int(test_fraction * 100) # off by a bit cuz rounding... should be fine
-    train_set = []
-    test_set = []
-    for sample_type, game_bucket, features, label in samples:
-        if sample_type != only_of_type:
-            continue
-        which_set = test_set if (game_bucket % 100) <= rounded_test_percentage else train_set
-        which_set.append((features, label))
-    return train_set, test_set
 
+    # Decide which indices belong train (0) or test (1)
+    test_set_indices = []
+    for i in range(meta_info.shape[0]):
+        game_bucket = meta_info[i][0]
+        is_in_test = 1 if (int(game_bucket) % 100) <= rounded_test_percentage else 0
+        test_set_indices.append(is_in_test)
 
-def iter_samples(env_class, replay_directory):
-    env = env_class.Environment() # XXX: Get rid of this
+    # Filter into respective sets
+    # - Convert test_set_indices to numpy array so we can do boolean operations.
+    test_set_indices = numpy.array(test_set_indices)
 
-    for sample in generate_training_samples(
-        replay_directory,
-        env_class.State,
-        env_class.generate_features,
-        env,
-    ):
-        yield sample
+    train_features = features[test_set_indices == 0]
+    train_labels = labels[test_set_indices == 0]
+
+    test_features = features[test_set_indices == 1]
+    test_labels = labels[test_set_indices == 1]
+
+    return train_features, train_labels, test_features, test_labels
 
 
 def extract_policy_labels(move, environment):
@@ -109,9 +116,24 @@ def samples_from_replay(
                 yield "policy", game_bucket, agent_features, policy_labels
 
 
-def iter_replay_data(replay_directory):
+# XXX: Move these to hashring.py or something
+def fast_deterministic_hash(string):
+    return int(md5(string.encode()).hexdigest(), 16)
+
+
+def is_my_task(key, worker_num, num_workers):
+    return (fast_deterministic_hash(key) % num_workers) == worker_num
+
+
+def iter_replay_data(replay_directory, worker_num=0, num_workers=1):
     for file_name in os.listdir(replay_directory):
+        if not file_name.endswith(".json"):
+            continue
         file_path = os.path.join(replay_directory, file_name)
+
+        if not is_my_task(file_path, worker_num, num_workers):
+            continue
+
         try:
             agent_replay = json.loads(open(file_path, 'r').read())
         except Exception as e:
@@ -125,16 +147,18 @@ def generate_training_samples(
     state_class,
     feature_extractor,
     environment,
+    worker_num=0,
+    num_workers=1,
 ):
-    games_parsed = -1
-    for agent_replay in iter_replay_data(replay_directory):
-        games_parsed += 1
-        if (games_parsed % 1000) == 0:
-            print("Replays Parsed:", games_parsed)
-        for sample_type, game_bucket, features, label in samples_from_replay(
+    replays_parsed = -1
+    for agent_replay in iter_replay_data(replay_directory, worker_num, num_workers):
+        replays_parsed += 1
+        if (replays_parsed % 100) == 0:
+            print("Replays Parsed:", replays_parsed)
+        for sample_type, game_bucket, features, labels in samples_from_replay(
             agent_replay,
             feature_extractor,
             state_class,
             environment,
         ):
-            yield sample_type, game_bucket, features, label
+            yield sample_type, game_bucket, features, labels

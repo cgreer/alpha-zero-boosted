@@ -21,3 +21,7 @@ VERBOSITY = int(os.getenv("RL_VERBOSE")) if os.getenv("RL_VERBOSE") else 1
 ROOT_DATA_DIRECTORY = "/Users/chrisgreer/rl_data"
 
 TMP_DIRECTORY = "/tmp"
+
+NUM_THREADS = 14
+
+TOOL_CHAIN = "clang" # Will need to change this for linux/windows
