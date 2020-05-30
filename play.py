@@ -26,26 +26,24 @@ if p1_bot_name == "human":
     p1_agent_settings = {}
     P1_agent_class = HumanAgent
 else:
-    p1_agent_settings = configure_agent(p1_bot_name)
+    p1_agent_settings = configure_agent(p1_bot_name, consideration_time)
     P1_agent_class = MCTSAgent
 
 if p2_bot_name == "human":
     p2_agent_settings = {}
     P2_agent_class = HumanAgent
 else:
-    p2_agent_settings = configure_agent(p2_bot_name)
+    p2_agent_settings = configure_agent(p2_bot_name, consideration_time)
     P2_agent_class = MCTSAgent
 
 env_module = get_env_module(environment)
 
-# Play N games
-for i in range(num_games):
-    environment = env_module.Environment()
+environment = env_module.Environment()
 
-    agent_1 = P1_agent_class(environment=environment, **p1_agent_settings)
-    agent_2 = P2_agent_class(environment=environment, ** p2_agent_settings)
+agent_1 = P1_agent_class(environment=environment, **p1_agent_settings)
+agent_2 = P2_agent_class(environment=environment, ** p2_agent_settings)
 
-    environment.add_agent(agent_1)
-    environment.add_agent(agent_2)
+environment.add_agent(agent_1)
+environment.add_agent(agent_2)
 
-    environment.run()
+environment.run()
