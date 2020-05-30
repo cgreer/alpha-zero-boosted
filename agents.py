@@ -475,22 +475,23 @@ class MCTSAgent(Agent):
                 the search may still overrule bad moves."
         '''
         # XXX: Adapt to number of moves.
-        return 1.0
+        return .5
 
     def select_move(self):
-        temperature = self.get_current_temperature()
         child_edges = self.current_node.child_edges
 
+        temperature = self.get_current_temperature()
+        temp_factor = (1.0 / temperature)
+
         # Pre-calculate denominator for temperature adjustment
-        total_visits = 0.0
+        sum_adjusted_visits = 0.0
         for child_edge in child_edges:
-            total_visits += child_edge.visit_count
-        total_visits_adjusted = total_visits**(1.0 / temperature)
+            sum_adjusted_visits += child_edge.visit_count**temp_factor
 
         # Build a weight for each edge
         move_weights = [0.0] * len(child_edges)
         for i, child_edge in enumerate(child_edges):
-            move_weights[i] = (child_edge.visit_count**(1.0 / temperature)) / total_visits_adjusted
+            move_weights[i] = (child_edge.visit_count**temp_factor) / sum_adjusted_visits
 
         # Select proportional to temperature-adjusted visits
         # - "p" is temperature-adjusted probabilities associated with each edge
