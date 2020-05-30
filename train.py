@@ -173,11 +173,11 @@ def run(
     # to always redo everything for now.
     for batch_num in batch_nums:
         generate_batch_samples(
-            ENVIRONMENT,
-            BOT_SPECIES,
+            environment,
+            bot_species,
             batch_num=batch_num,
             num_workers=num_workers,
-            positions_per_batch=POSITIONS_PER_BATCH,
+            positions_per_batch=positions_per_batch,
         )
 
     ####################

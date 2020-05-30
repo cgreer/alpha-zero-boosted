@@ -57,6 +57,7 @@ for i in range(batches_to_train):
         bot_species,
         training_generation,
         training_info.current_batch,
+        num_workers,
     )
     elapsed = round(time.time() - st_time, 1)
     print(f"\nTrained new model in {elapsed} seconds")
