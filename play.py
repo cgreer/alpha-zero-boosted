@@ -5,16 +5,18 @@ from environment_registry import get_env_module
 
 # script.py <environment> <p1 bot name> <p2 bot_name>
 # script.py connect_four mcts_naive-6 human
-environment, p1_bot_name, p2_bot_name, num_games = sys.argv[1:]
-num_games = int(num_games)
+environment, p1_bot_name, p2_bot_name, consideration_time = sys.argv[1:]
+consideration_time = float(consideration_time)
 
 
-def configure_agent(bot_name):
+def configure_agent(bot_name, consideration_time):
     bot_species, bot_generation = bot_name.split("-")
     bot_generation = int(bot_generation)
 
     bot_settings = configure_bot(environment, bot_species, bot_generation)
-    bot_settings["move_consideration_time"] = 0.7
+
+    # Fix the amount of time per move for bots
+    bot_settings["move_consideration_time"] = consideration_time
     bot_settings["move_consideration_steps"] = 1
 
     return bot_settings
