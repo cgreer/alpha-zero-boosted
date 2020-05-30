@@ -55,19 +55,85 @@ class GBDTValue(GBDTModel):
 class GBDTPolicy(GBDTModel):
 
     def extract_policy_observations(self, features, labels):
-        # features ~ [[0.0, 1.0, ...], ...]
-        # labels ~ [[.01, .92, .001, ...], ...]
+        '''
+        :features ~ [[0.0, 1.0, ...], ...], one feature set for each game position.
+        :labels ~ [[.01, .92, .001, ...], ...], one label set for each game position
 
-        # Make a training instance for every label in policy labels by
-        # prepending the features for the state with the action id.
-        # XXX: This will be SLOOOW. Do better. Use hstack.
+        When the actions per state of an environment are low, you can make a policy
+        observation (state features, action probability) for every action (move)
+        for every state (game position).
+
+        However, if the environment (aka game) has a large branching factor,
+        then it will...
+            - Use a lot of memory per state (position)
+            - Make a lot of training observations for actions that have 0.0
+              probabilities
+                - Without a lot of training data/time, it'll make it difficult to
+                  learn the top N actions for a state.
+
+        To deal with these issues, we sample a subset of the actions in a given
+        state for environments with high actions per state.
+
+        First we sample N samples (without replacement) proportional to the
+        probability of the move. Recall that the move probability was determined
+        by the results of the mcts considerations for that state. This
+        action-probabilty, proportional sample ensures we likely sample the most
+        favorable actions for that state. It will allow the model to understand
+        the top actions to take from a given state.
+
+        We then uniformly sample N more samples from the remaining samples that
+        weren't chosen in the first sampling step to ensure we represent some
+        "negative" samples.  If we didn't do this negative sampling, the global
+        bias of the model would be high because the model will only have seen
+        favorable moves for every state. It would assume that moves are, in
+        general, high likelihood.  So these negative samples (often times 0.0
+        probability in high branching-factor games) will correct the global bias
+        and make our action policy probabilities more accurate.
+        '''
+        pdf_sample_count = 5
+
+        print("\nExtracting policy observations")
         observation_features = []
         observation_labels = []
         for row_index in range(features.shape[0]):
-            for i, mcts_label in enumerate(labels[row_index]):
-                policy_features = numpy.concatenate(([i], features[row_index]))
-                observation_features.append(policy_features)
-                observation_labels.append(mcts_label)
+            if row_index % 10_000 == 0:
+                print(f"...Position {row_index}")
+
+            position_features = features[row_index]
+            move_probabilities = labels[row_index]
+            action_ids = list(range(len(move_probabilities)))
+
+            # What's the cap on the number of moves we can sample from this pdf?
+            num_above_zero = 0
+            for mp in move_probabilities:
+                if mp > 0.0:
+                    num_above_zero += 1
+            num_to_sample = min(num_above_zero, pdf_sample_count)
+
+            # Sample N labels proportional to policy pdf
+            pdf_samples = numpy.random.choice(
+                action_ids,
+                size=num_to_sample,
+                replace=False,
+                p=move_probabilities
+            )
+
+            # Sample N "negative" labels that didn't get picked
+            remaining_ids = [x for x in action_ids if x not in pdf_samples]
+            negative_samples = numpy.random.choice(
+                remaining_ids,
+                size=num_to_sample,
+                replace=False,
+            )
+
+            # Make a policy training observation by prepending the position features
+            # with the action id.
+            # XXX: This will be SLOOOW. Do better. Use hstack.
+            for samples in (pdf_samples, negative_samples):
+                for action_id in samples:
+                    policy_features = numpy.concatenate(([action_id], position_features))
+                    observation_features.append(policy_features)
+                    observation_labels.append(move_probabilities[action_id])
 
         return (
             numpy.array(observation_features, dtype=numpy.float32),
