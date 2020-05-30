@@ -81,6 +81,10 @@ def generate_batch_samples(
     num_workers,
     positions_per_batch=1_000_000_000,
 ):
+    # Delete any existing samples to prevent duplicate data.
+    delete_batch_samples(environment, bot_species, batch_num)
+
+    # Collect samples in parallel
     worker_args = []
     for worker_num in range(num_workers):
         worker_args.append(
@@ -93,10 +97,51 @@ def generate_batch_samples(
                 num_workers
             )
         )
-
     with Pool(num_workers) as p:
         results = p.map(run_worker, worker_args)
     print(results)
+
+
+def find_batch_sample_files(environment, bot_species, batch_num, model_type):
+    sample_file_paths = dict(
+        meta=[],
+        features=[],
+        labels=[],
+    )
+    replay_directory = find_batch_directory(environment, bot_species, batch_num)
+    for file_name in os.listdir(replay_directory):
+        if not file_name.endswith(".npy"):
+            continue
+
+        # Find the type of data this file is
+        for data_type in sample_file_paths.keys():
+            if file_name.startswith(f"{model_type}_{data_type}_samples"):
+                file_path = os.path.join(replay_directory, file_name)
+                sample_file_paths[data_type].append(file_path)
+                break
+
+    # Presort them just to be safe.
+    # - Operations on these files will assume they are paired up by index id.
+    for _, paths in sample_file_paths.items():
+        paths.sort()
+
+    assert len(sample_file_paths["meta"]) == len(sample_file_paths["features"])
+    assert len(sample_file_paths["features"]) == len(sample_file_paths["labels"])
+
+    return sample_file_paths
+
+
+def delete_batch_samples(environment, bot_species, batch_num):
+    print("Deleting sample files")
+    for model_type in ("value", "policy"):
+        for _, file_paths in find_batch_sample_files(
+            environment,
+            bot_species,
+            batch_num,
+            model_type,
+        ):
+            for file_path in file_paths:
+                os.remove(file_path)
 
 
 def load_game_samples(
@@ -105,37 +150,27 @@ def load_game_samples(
     batches,
     model_type,
 ):
-    '''
-    XXX: Sanity check that each batch folder doesn't have a mix of num_workers
-    files. Raise error if it does.
-    '''
+    # Load all the paths for all the samples requested.
     sample_file_paths = dict(
         meta=[],
         features=[],
         labels=[],
     )
     for batch_num in batches:
-        replay_directory = find_batch_directory(environment, bot_species, batch_num)
-        for file_name in os.listdir(replay_directory):
-            if not file_name.endswith(".npy"):
-                continue
+        batch_file_paths = find_batch_sample_files(
+            environment,
+            bot_species,
+            batch_num,
+        )
+        for k, v in batch_file_paths.items():
+            sample_file_paths[k].extend(v)
 
-            # Find the type of data this file is
-            key = None
-            for kv in ("meta", "features", "labels"):
-                if file_name.startswith(f"{model_type}_{kv}_samples"):
-                    key = kv
-                    break
-            else:
-                # Doesn't match any keys (like policy, other npy files)
-                continue
-
-            file_path = os.path.join(replay_directory, file_name)
-            sample_file_paths[key].append(file_path)
     # Load the sorted file paths for each type of data into one array for each
     # data type.
-    # - YOU MUST SORT THESE FILE NAMES.  If you don't then the ith feature won't
-    #   match the ith label and nothing will train correctly.
+    #
+    # YOU MUST SORT THESE FILE NAMES.  If you don't then the ith feature won't
+    # match the ith label and nothing will train correctly.
+    #
     # XXX: parse out batch/file names and ensure they are sorted correctly.
     samples = dict(
         meta=[],
