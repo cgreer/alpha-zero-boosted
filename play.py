@@ -14,8 +14,8 @@ def configure_agent(bot_name):
     bot_generation = int(bot_generation)
 
     bot_settings = configure_bot(environment, bot_species, bot_generation)
-    bot_settings["move_consideration_time"] = 0.2
-    bot_settings["move_consideration_steps"] = 1400
+    bot_settings["move_consideration_time"] = 0.7
+    bot_settings["move_consideration_steps"] = 1
 
     return bot_settings
 
