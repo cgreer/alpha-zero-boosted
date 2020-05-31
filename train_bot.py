@@ -1,4 +1,6 @@
+import math
 import time
+
 from self_play import run as run_self_play
 from train import run as run_model_training
 from assess import run_faceoff
@@ -18,7 +20,7 @@ num_workers = 12
 games_per_batch = 5_000
 # games_per_batch = num_workers * 10
 
-num_faceoff_rounds = 25 # 25 rounds * 2 bots * 3 games per bot per round = 150 games
+num_faceoff_rounds = math.ceil(150 / num_workers) # Will play at least num_workers per round
 adjusted_win_rate_threshold = .55
 
 for i in range(batches_to_train):
@@ -70,6 +72,7 @@ for i in range(batches_to_train):
         bot_species,
         training_generation,
         num_rounds=num_faceoff_rounds,
+        num_workers=num_workers,
     )
     elapsed = round(time.time() - st_time, 1)
     print(f"\nAssessed new model in {elapsed} seconds")

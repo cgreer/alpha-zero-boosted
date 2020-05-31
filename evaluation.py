@@ -1,12 +1,17 @@
-from agents import RandomAgent, MCTSAgent
-from intuition_model import UnopinionatedValue, UniformPolicy
 from dataclasses import dataclass
 from itertools import combinations
-from trueskill import Rating, quality_1vs1, rate_1vs1
 import copy
 import random
-import tictactoe
 import typing
+from multiprocessing import Pool
+
+from trueskill import Rating, quality_1vs1, rate_1vs1
+
+from agents import RandomAgent, MCTSAgent
+from intuition_model import UnopinionatedValue, UniformPolicy
+from environment_registry import get_env_module
+import tictactoe
+from self_play import configure_bot
 
 
 def test_trueskill():
@@ -27,6 +32,30 @@ def test_trueskill():
 
         p_draw = quality_1vs1(agent_1_rating, agent_2_rating)
         print("quality P(draw)?:", p_draw)
+
+
+def run_game_worker(args):
+    # :matchup_info ~ [(bot_1_species, bot_1_generation), ...]
+    environment_name, matchup_info = args
+
+    env_module = get_env_module(environment_name)
+    environment = env_module.Environment()
+
+    bot_1_species, bot_1_generation = matchup_info[0]
+    bot_2_species, bot_2_generation = matchup_info[1]
+
+    agent_1_settings = configure_bot(environment_name, bot_1_species, bot_1_generation)
+    agent_1 = MCTSAgent(environment=environment, **agent_1_settings)
+
+    agent_2_settings = configure_bot(environment_name, bot_2_species, bot_2_generation)
+    agent_2 = MCTSAgent(environment=environment, **agent_2_settings)
+
+    environment.add_agent(agent_1)
+    environment.add_agent(agent_2)
+
+    outcomes, _ = environment.run()
+
+    return (matchup_info, outcomes)
 
 
 @dataclass
@@ -144,6 +173,8 @@ class Tournament:
                 self.handle_game_outcome(players, outcomes)
 
     def handle_game_outcome(self, players, outcomes):
+        # :players ~ [entrant_1, entrant_2]
+
         # Update skill rating
         # - First player passed to rate_1vs1 is the winner
         p1 = players[0]
@@ -165,48 +196,87 @@ class Tournament:
             opponent_entrant = [p for p in players if p != entrant][0]
             entrant.handle_outcome(opponent_entrant, outcome)
 
-    def ladder(self, num_rounds):
+    def run_games(self, matchups, num_workers):
+        '''
+        Don't make pool the len(matchups) because it could cause bots to share
+        cpu time.
+        '''
+        environment_name = self.environment().get_name()
+
+        worker_args = []
+        for matchup in matchups:
+            bot_1_name = matchup[0].bot.name
+            bot_1_species, bot_1_generation = bot_1_name.split("-")
+            bot_1_generation = int(bot_1_generation)
+
+            bot_2_name = matchup[1].bot.name
+            bot_2_species, bot_2_generation = bot_2_name.split("-")
+            bot_2_generation = int(bot_2_generation)
+
+            matchup_info = [
+                (bot_1_species, bot_1_generation),
+                (bot_2_species, bot_2_generation),
+            ]
+            random.shuffle(matchup_info)
+
+            worker_args.append(
+                (
+                    environment_name,
+                    matchup_info,
+                )
+            )
+        with Pool(num_workers) as p:
+            results = p.map(run_game_worker, worker_args)
+
+        return results
+
+    def ladder(self, num_rounds, num_workers=1):
+        '''
+        For every entrant, play 3 games every round:
+            - 1 opponent that is closest above you
+            - 1 opponent that is closest below you
+            - 1 random opponent
+
+        If you're the lowest-ranked player, play the opponent above you twice.
+        If you're the highest-ranked player, play the opponent below you twice.
+
+        XXX: Better way to matchmake?
+        '''
         entrants = list(self.entrants.values())
         for round_num in range(num_rounds):
             # Sort by skill level
             entrants.sort(key=lambda x: x.skill_rating.mu)
 
-            # For every entrant, play 3 games: the 2 players that are closest above/below you, and
-            # one random opponent to play against.  If you're the lowest-ranked player, play the
-            # person above you twice.  If you're the highest-ranked player, play the person below
-            # you twice.
-            # XXX: Better way to matchmake?
-            for i in range(len(entrants)):
-                matchups = []
-                if i == 0:
-                    matchups = [
-                        [entrants[i], entrants[i + 1]],
-                        [entrants[i], entrants[i + 1]],
-                    ]
-                elif i == (len(entrants) - 1):
-                    matchups = [
-                        [entrants[i], entrants[i - 1]],
-                        [entrants[i], entrants[i - 1]],
-                    ]
-                else:
-                    matchups = [
-                        [entrants[i], entrants[i - 1]],
-                        [entrants[i], entrants[i + 1]],
-                    ]
-                matchups.append([
-                    entrants[i],
-                    random.choice([x for x in entrants if x != entrants[i]]),
-                ])
+            # Make at least as many matchups as workers
+            matchups = []
+            while len(matchups) < num_workers:
+                for i in range(len(entrants)):
+                    if i == 0:
+                        matchups.append([entrants[i], entrants[i + 1]])
+                        matchups.append([entrants[i], entrants[i + 1]])
+                    elif i == (len(entrants) - 1):
+                        matchups.append([entrants[i], entrants[i - 1]])
+                        matchups.append([entrants[i], entrants[i - 1]])
+                    else:
+                        matchups.append([entrants[i], entrants[i - 1]])
+                        matchups.append([entrants[i], entrants[i + 1]])
+                    matchups.append([
+                        entrants[i],
+                        random.choice([x for x in entrants if x != entrants[i]]),
+                    ])
 
-                for matchup in matchups:
-                    # Randomly choose who gets to be p1/p2
-                    # - Shuffles in place
-                    players = [matchup[0], matchup[1]]
-                    random.shuffle(players)
-
-                    outcomes = self.play_single_game(*players)
-
-                    self.handle_game_outcome(players, outcomes)
+            results = self.run_games(matchups, num_workers)
+            for matchup_info, outcomes in results:
+                matchup_entrants = []
+                for bot_species, bot_generation in matchup_info:
+                    bot_name = f"{bot_species}-{bot_generation}"
+                    for en in entrants:
+                        if en.bot.name == bot_name:
+                            matchup_entrants.append(en)
+                            break
+                    else:
+                        raise KeyError(f"Couldn't find the bot: {bot_name}")
+                self.handle_game_outcome(matchup_entrants, outcomes)
 
     def display_results(self):
         # Print table of win rates (order by descending)
@@ -300,6 +370,7 @@ def test():
         environment=tictactoe.Environment,
         bots=bots,
     )
+
     # tournament.round_robin(num_games=200)
     for i in range(100):
         tournament.ladder(num_rounds=1)

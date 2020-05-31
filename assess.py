@@ -44,7 +44,13 @@ def run_ladder(environment_name, bot_species, bot_generation):
         tournament.display_results()
 
 
-def run_faceoff(environment_name, bot_species, bot_generation, num_rounds=17):
+def run_faceoff(
+    environment_name,
+    bot_species,
+    bot_generation,
+    num_rounds,
+    num_workers=1,
+):
     env_class = get_env_module(environment_name)
 
     # The bot your testing and the current best bot
@@ -65,7 +71,7 @@ def run_faceoff(environment_name, bot_species, bot_generation, num_rounds=17):
         bots=bots,
     )
     for i in range(num_rounds):
-        tournament.ladder(num_rounds=1) # 2 x 3 games each round
+        tournament.ladder(num_rounds=1, num_workers=num_workers) # 2 x 3 games each round
         tournament.display_results()
 
     # Return contender matchup
