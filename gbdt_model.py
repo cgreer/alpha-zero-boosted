@@ -126,19 +126,16 @@ class GBDTModel:
 
         num_round = 15000
         early_stopping_rounds = 10
-        learning_rate = 0.15
-        learning_rate_fxn = lambda x: learning_rate # noqa
-        # learning_rate_fxn=lambda x: (lr - lrs) + (lrs * (lrsh ** x)),  # Start with a higher learning rate and adjust lower over time
 
         # bagging_fractions = [.05, .1, .2, .3, .4]
         # bagging_freqs = [5, 10, 20, 30]
         # num_leaves_choices = [2**7, 2**8, 2**9, 2**10, 2**11]
 
+        learning_rates = [.2]
         bagging_fractions = [.2]
         bagging_freqs = [10]
-        num_leaves_choices = [2**8]
+        num_leaves_choices = [2**10]
 
-        # Best, but treelite trains slowly so beware
         # bagging_fractions = [.3]
         # bagging_freqs = [20]
         # num_leaves_choices = [2**11]
@@ -147,10 +144,12 @@ class GBDTModel:
             bagging_fraction,
             bagging_freq,
             num_leaves,
+            learning_rate,
         ) in itertools.product(
             bagging_fractions,
             bagging_freqs,
-            num_leaves_choices
+            num_leaves_choices,
+            learning_rates,
         ):
             params = {
                 'objective': objective, # aka xentropy
@@ -168,6 +167,9 @@ class GBDTModel:
                 # 'max_depth': 3,
                 # 'min_gain_to_split': 0.01,
             }
+
+            learning_rate_fxn = lambda x: learning_rate # noqa
+            # learning_rate_fxn=lambda x: (lr - lrs) + (lrs * (lrsh ** x)),  # Start with a higher learning rate and adjust lower over time
 
             print("\nTraining")
             lightgbm_booster = lightgbm.train(
