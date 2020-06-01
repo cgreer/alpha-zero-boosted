@@ -142,12 +142,13 @@ def find_batch_sample_files(environment, bot_species, batch_num, model_type):
 def delete_batch_samples(environment, bot_species, batch_num):
     print("Deleting sample files")
     for model_type in ("value", "policy"):
-        for _, file_paths in find_batch_sample_files(
+        batch_file_paths = find_batch_sample_files(
             environment,
             bot_species,
             batch_num,
             model_type,
-        ):
+        )
+        for _, file_paths in batch_file_paths.items():
             for file_path in file_paths:
                 os.remove(file_path)
 

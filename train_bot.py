@@ -49,7 +49,8 @@ for i in range(batches_to_train):
     )
     elapsed = round(time.time() - st_time, 1)
     games_per_sec = round(games_per_batch / elapsed, 1)
-    print(f"\nGames played: {games_per_batch}, elapsed: {elapsed}, games per sec: {games_per_sec}")
+    print(f"\nSelf play finished in {elapsed} seconds")
+    print(f"Games played: {games_per_batch}, games per sec: {games_per_sec}")
 
     # Train new model
     print("\n\nTraining")
@@ -62,7 +63,7 @@ for i in range(batches_to_train):
         num_workers,
     )
     elapsed = round(time.time() - st_time, 1)
-    print(f"\nTrained new model in {elapsed} seconds")
+    print(f"\nTrained new models in {elapsed} seconds")
 
     # Assess new model
     print("\n\nAssessing")
