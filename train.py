@@ -80,7 +80,15 @@ def generate_batch_samples(
     batch_num,
     num_workers,
     positions_per_batch=1_000_000_000,
+    force_regeneration=False,
 ):
+    # Don't generate samples if they exist already
+    if force_regeneration is False:
+        existing_batch_sample_files = find_batch_sample_files(environment, bot_species, batch_num, "value")
+        if existing_batch_sample_files["features"]:
+            print(f"Samples already exist for {environment}/{bot_species}/{batch_num}. Skipping.")
+            return
+
     # Delete any existing samples to prevent duplicate data.
     delete_batch_samples(environment, bot_species, batch_num)
 
@@ -161,6 +169,7 @@ def load_game_samples(
             environment,
             bot_species,
             batch_num,
+            model_type,
         )
         for k, v in batch_file_paths.items():
             sample_file_paths[k].extend(v)
@@ -171,7 +180,8 @@ def load_game_samples(
     # YOU MUST SORT THESE FILE NAMES.  If you don't then the ith feature won't
     # match the ith label and nothing will train correctly.
     #
-    # XXX: parse out batch/file names and ensure they are sorted correctly.
+    # XXX: parse out batch/file names and to 100% ensure they are sorted
+    # correctly.
     samples = dict(
         meta=[],
         features=[],
@@ -179,7 +189,7 @@ def load_game_samples(
     )
     for k, paths in sample_file_paths.items():
         paths.sort()
-        print("Loading:", paths)
+        print("Loading:", len(paths), k, "samples")
         datasets = []
         for p in paths:
             datasets.append(numpy.load(p))
