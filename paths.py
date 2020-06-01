@@ -1,5 +1,11 @@
-from settings import ROOT_DATA_DIRECTORY
 import os
+from uuid import uuid4
+
+from settings import ROOT_DATA_DIRECTORY, TMP_DIRECTORY
+
+
+def generate_tmp_path(key, suffix):
+    return f"{TMP_DIRECTORY}/{key}-{uuid4()}.{suffix}"
 
 
 def build_training_info_path(environment, species):

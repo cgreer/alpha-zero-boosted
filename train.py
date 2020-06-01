@@ -189,7 +189,7 @@ def load_game_samples(
     )
     for k, paths in sample_file_paths.items():
         paths.sort()
-        print("Loading:", len(paths), k, "samples")
+        print("Loading:", len(paths), k, f"{model_type} samples")
         datasets = []
         for p in paths:
             datasets.append(numpy.load(p))
@@ -240,7 +240,7 @@ def run(
         policy_model = NaivePolicy()
     elif bot_species == "mcts_gbdt":
         value_model = GBDTValue()
-        policy_model = GBDTPolicy()
+        policy_model = GBDTPolicy(num_workers=num_workers)
     else:
         raise KeyError(f"Unknown species: {bot_species}")
 
