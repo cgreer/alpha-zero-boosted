@@ -23,5 +23,6 @@ ROOT_DATA_DIRECTORY = "/Users/chrisgreer/rl_data"
 TMP_DIRECTORY = "/tmp"
 
 NUM_THREADS = 14
+NUM_CORES = 14
 
 TOOL_CHAIN = "clang" # Will need to change this for linux/windows
