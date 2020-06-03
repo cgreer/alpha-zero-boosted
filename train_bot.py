@@ -14,6 +14,7 @@ training_info = TrainingInfo.load(
     environment,
     bot_species,
 )
+last_batch = training_info.current_batch + batches_to_train
 
 num_workers = 12
 
@@ -24,7 +25,7 @@ num_faceoff_rounds = math.ceil(150 / num_workers) # Will play at least num_worke
 adjusted_win_rate_threshold = .55
 
 for i in range(batches_to_train):
-    print(f"\n\nBatch {training_info.current_batch + i} / {training_info.current_batch + batches_to_train - 1}")
+    print(f"\n\nBatch {training_info.current_batch} / {last_batch}")
     print(f"environment: {environment}, species: {bot_species}")
     training_generation = training_info.self_play_bot_generation + 1
 
