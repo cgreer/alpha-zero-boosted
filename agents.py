@@ -1,6 +1,11 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, List, Tuple
+from typing import (
+    Any,
+    List,
+    Tuple,
+    Dict,
+)
 import json
 import math
 import pathlib
@@ -160,12 +165,21 @@ class GameTreeNode:
             raise KeyError(f"Missing edge for move: {move}")
         return edge_representing_move
 
+    def policy(self):
+        move_visits = []
+        for ce in self.child_edges:
+            move_visits.append((ce.move, ce.visit_count))
+        move_visits.sort()
+        policy = numpy.array([x[1] for x in move_visits])
+        policy = policy / policy.sum()
+        return policy
+
 
 @dataclass
 class GameTreeEdge:
     parent_node: GameTreeNode
     child_node: GameTreeNode
-    move: str
+    move: int
     prior_probability: float # Prior for agent moving from this position
     visit_count: int
     reward_totals: List[float] # 1 float for each agent
@@ -183,9 +197,12 @@ class MCTSAgent(Agent):
     puct_explore_factor: float
     puct_noise_alpha: float
     puct_noise_influence: float
+    policy_overrides: List[Dict] = None # [agent_0_overrides, ...]
 
     def __post_init__(self):
         super().__post_init__()
+        if self.policy_overrides is None:
+            self.policy_overrides = [None, None]
 
     def set_agent_num(self, agent_num):
         super().set_agent_num(agent_num)
@@ -214,7 +231,7 @@ class MCTSAgent(Agent):
 
     def prune_game_search_tree(self):
         '''
-        Remove all the considered — but unvisited — nodes/edges upstream of the
+        Remove all the considered, unrealized, nodes/edges upstream of the
         current node in the game tree.  These were the nodes that MCTS
         considered, but the actions the players took didn't manifest in those
         tree pathways.  The stats of those pathways might be useful, but it's a
@@ -301,19 +318,23 @@ class MCTSAgent(Agent):
         total_node_visits = node.visit_count
 
         # Ensure total_node_visits isn't 0
-        # - If this is the first visit, then the puct exploitation_term and exploration_term would
-        # both be zero without this adjustment. In which case, instead of choosing based on
-        # prior for that first visit, it would choose randomly among all actions.
-        # Ensuring this is at least 1 will allow the noisy prior to bias the choice.
+        # - If this is the first visit, then the puct exploitation_term and
+        #   exploration_term would both be zero without this adjustment. In which
+        #   case, instead of choosing based on prior for that first visit, it
+        #   would choose randomly among all actions.  Ensuring this is at least 1
+        #   will allow the noisy prior to bias the choice.
         if total_node_visits < 1:
             total_node_visits = 1
 
         # Generate noise for prior probabilities to encourage MCTS exploration
-        # - The :noise_alpha is determines the type of variability and the strength. A value below
-        # 1.0 will concentrate the variability to one of the N moves. A value of 1.0 will make the
-        # noise uniform across all moves.  As the value goes to infinity the noise becomes
-        # ineffective.  Chess, shogi, and go had (average_moves, alpha) values of  [(35, .2), (92,
-        # .15), (250, .03)] respectively.
+        # - The :noise_alpha is determines the type of variability and the
+        #   strength. A value below 1.0 will concentrate the variability to one of
+        #   the N moves. A value of 1.0 will make the noise uniform across all
+        #   moves.  As the value goes to infinity the noise becomes ineffective.
+        #   Chess, shogi, and go had (average_moves, alpha) values of  [(35, .2),
+        #   (92, .15), (250, .03)] respectively.
+        # - Note that this noise is added for every node in this implementation,
+        #   but I believe AZ did it just for the root consideration node.
         # noise = numpy.random.dirichlet([noise_alpha] * len(node.child_edges))
         noise = NOISE_MAKER.make_noise(noise_alpha, len(node.child_edges))
 
@@ -321,16 +342,22 @@ class MCTSAgent(Agent):
         sqrt_total_node_visits = math.sqrt(total_node_visits)
         best_value = 0.0
         best_edge = None
-        agent_moving = node.state.whose_move # XXX: Shouldn't be required for state?
+        agent_moving = node.state.whose_move
+        policy_overrides = self.policy_overrides[node.state.whose_move]
         for i, child_edge in enumerate(node.child_edges):
             # XXX: Correct behavior for 0 visits?
-            # - Seems like it should be 0 and have the policy's prior affect the choice
-            # instead when there is no evidence.
+            # - Seems like it should be 0 and have the policy's prior affect the
+            #   choice instead when there is no evidence.
             exploitation_term = 0.0
             if child_edge.visit_count > 0:
                 exploitation_term = child_edge.reward_totals[agent_moving] / child_edge.visit_count
 
-            noisy_prior = (child_edge.prior_probability * (1 - noise_influence)) + (noise[i] * noise_influence)
+            if policy_overrides:
+                prior = policy_overrides.get(child_edge.move, child_edge.prior_probability)
+            else:
+                prior = child_edge.prior_probability
+
+            noisy_prior = (prior * (1 - noise_influence)) + (noise[i] * noise_influence)
             exploration_term = explore_factor * noisy_prior
             exploration_term = exploration_term * (sqrt_total_node_visits / (1 + child_edge.visit_count))
 
@@ -475,6 +502,7 @@ class MCTSAgent(Agent):
                 the search may still overrule bad moves."
         '''
         # XXX: Adapt to number of moves.
+        # XXX: Adjust for tournament play vs self play
         return .3
 
     def select_move(self):
