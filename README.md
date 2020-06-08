@@ -2,7 +2,7 @@
 # Alpha Zero Boosted
 
 A "build to learn" implementation of the [Alpha
-Zero](https://www.nature.com/articles/nature16961) algorithm written in Python
+Zero](https://doi.org/10.1038/nature24270) algorithm written in Python
 that uses the [LightGBM](https://github.com/microsoft/LightGBM) (a Gradient
 Boosted Decision Tree or GBDT) ML model in place of the Deep Neural Network for
 value/policy functions.
