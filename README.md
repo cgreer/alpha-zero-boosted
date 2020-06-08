@@ -3,8 +3,8 @@
 
 A "build to learn" implementation of the [Alpha
 Zero](https://doi.org/10.1038/nature24270) algorithm written in Python
-that uses the [LightGBM](https://github.com/microsoft/LightGBM) (a Gradient
-Boosted Decision Tree or GBDT) ML model in place of a Deep Neural Network for value/policy functions.
+that uses [LightGBM](https://github.com/microsoft/LightGBM) (Gradient
+Boosted Decision Tree) in place of a Deep Neural Network for value/policy functions.
 
 A few environments (i.e., games) are implemented: Quoridor, Connect
 Four, and Tic-Tac-Toe.
