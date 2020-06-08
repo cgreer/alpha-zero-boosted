@@ -9,7 +9,8 @@ in place of the Deep Neural Network for value/policy functions.
 A few "environments" (aka "games") are implemented: Quoridor, Connect
 Four, Tic-Tac-Toe.
 
-![](https://github.com/cgreer/alpha_zero_boosted/raw/master/images/quoridor_sc.png.png)
+![](https://github.com/cgreer/alpha_zero_boosted/raw/master/images/quoridor_sc.png)
+
 ![](https://github.com/cgreer/alpha_zero_boosted/raw/master/images/mcts_consideration_sc.png)
 
 
