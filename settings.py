@@ -1,4 +1,7 @@
 import os
+from pathlib import Path
+
+HOME = str(Path.home())
 
 '''
 0
@@ -16,9 +19,9 @@ import os
 5
     - PUCT edge stats
 '''
-VERBOSITY = int(os.getenv("RL_VERBOSE")) if os.getenv("RL_VERBOSE") else 1
+VERBOSITY = int(os.getenv("RL_VERBOSE")) if os.getenv("RL_VERBOSE") else 3
 
-ROOT_DATA_DIRECTORY = "/Users/chrisgreer/rl_data"
+ROOT_DATA_DIRECTORY = f"{HOME}/rl_data"
 
 TMP_DIRECTORY = "/tmp"
 
