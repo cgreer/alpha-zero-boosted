@@ -4,6 +4,7 @@ from typing import (
     Tuple,
     Set,
     List,
+    Dict,
 )
 import environment
 import numpy
@@ -387,6 +388,7 @@ class Environment(environment.Environment):
     jump_action_info: List[Tuple] = None
     vertical_wall_action_info: List[Tuple] = None
     horizontal_wall_action_info: List[Tuple] = None
+    action_name_by_id: Dict[int, str] = None
 
     def __post_init__(self):
         super().__post_init__()
@@ -395,7 +397,7 @@ class Environment(environment.Environment):
         # - :movement_direction is [0-7], see move_player
         self.action_info = []
 
-        _, self.action_name_by_id = self.build_action_name_mappings()
+        _, self.action_name_by_id = self.build_action_maps()
 
         self.move_action_info = [
             (0, 0, 1),
@@ -570,7 +572,7 @@ class Environment(environment.Environment):
             return True
         return False
 
-    def build_action_name_mappings(self):
+    def build_action_maps(self):
         action_id_by_name = {
             "u": 0,
             "r": 1,

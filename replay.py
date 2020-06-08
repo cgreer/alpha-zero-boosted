@@ -35,6 +35,28 @@ def replay_video(replay_path, speed, first_n_moves=100_000_000):
         current_state = environment.transition_state(current_state, move)
 
 
+def sample_batch_replay_files(
+    environment,
+    species,
+    batch,
+):
+    replay_directory = find_batch_directory(environment, species, batch)
+
+    # Grabbing replays
+    print("Grabbing replays")
+    all_replays = []
+    for file_name in os.listdir(replay_directory):
+        if not file_name.endswith(".json"):
+            continue
+        file_path = os.path.join(replay_directory, file_name)
+        all_replays.append(file_path)
+
+    print("Shuffling")
+    random.shuffle(all_replays)
+
+    return all_replays
+
+
 def sample_batch_replays(
     environment,
     species,

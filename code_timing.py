@@ -129,6 +129,7 @@ with time_operation(op, BASE_ITERATIONS) as op:
     for i in range(op.num_interations):
         a = s[500]
 
+'''
 op = "quoridor full path"
 from quoridor import victory_distance_2 as victory_distance, victory_path # noqa
 blocked_passages = set()
@@ -140,6 +141,7 @@ with time_operation(op, BASE_ITERATIONS) as op:
         initial_y = 0
         distance, final_x, final_y, visited = victory_distance(initial_x, initial_y, blocked_passages, 8)
         vic_path = victory_path(initial_x, initial_y, final_x, final_y, visited)
+'''
 
 s = tuple(range(180))
 st_time = time.time()
@@ -460,6 +462,27 @@ s = set((x, 1, 2, 3) for x in range(180))
 with time_operation(op, BASE_ITERATIONS) as op:
     for i in range(op.num_interations):
         b = set(s)
+
+op = "if s: (s is {})"
+s = {}
+with time_operation(op, BASE_ITERATIONS) as op:
+    for i in range(op.num_interations):
+        if s:
+            pass
+
+op = "if s: (s is [])"
+s = []
+with time_operation(op, BASE_ITERATIONS) as op:
+    for i in range(op.num_interations):
+        if s:
+            pass
+
+op = "if s: (s is None)"
+s = None
+with time_operation(op, BASE_ITERATIONS) as op:
+    for i in range(op.num_interations):
+        if s:
+            pass
 
 
 ###############

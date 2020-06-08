@@ -121,7 +121,7 @@ def extract_policy_observations(features, labels):
         remaining_ids = [x for x in action_ids if x not in pdf_samples]
         negative_samples = numpy.random.choice(
             remaining_ids,
-            size=num_to_sample,
+            size=min(num_to_sample, len(remaining_ids)),
             replace=False,
         )
 

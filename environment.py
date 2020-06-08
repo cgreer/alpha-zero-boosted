@@ -59,6 +59,10 @@ class Environment(ABC):
         pass
 
     @abstractmethod
+    def build_action_maps(self):
+        pass
+
+    @abstractmethod
     def translate_human_input(self, human_input):
         pass
 

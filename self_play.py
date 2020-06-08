@@ -50,11 +50,11 @@ def configure_bot(environment_name, species, generation):
         feature_extractor=env_module.generate_features,
         value_model=value_model,
         policy_model=policy_model,
-        move_consideration_steps=400, # at least 400 steps
-        move_consideration_time=0.3, # at least .3 seconds
+        move_consideration_steps=500, # at least N steps
+        move_consideration_time=0.1, # at least N seconds
         puct_explore_factor=1.0,
         # puct_noise_alpha=0.2, XXX: Configure per game (like for connect_four)
-        puct_noise_alpha=0.1,
+        puct_noise_alpha=0.4,
         puct_noise_influence=0.25,
     )
 

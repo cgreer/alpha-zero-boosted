@@ -16,6 +16,17 @@ def bootstrapped_sample(observations):
     return resampled_observations
 
 
+def bootstrapped_average(sample, n_resamples=1000, alpha=5):
+    avgs = []
+    for _ in range(n_resamples):
+        bss = bootstrapped_sample(sample)
+        avg = sum(bss) / len(bss)
+        avgs.append(avg)
+
+    ntiles = [alpha, 50, 100 - alpha]
+    return numpy.percentile(avgs, ntiles)
+
+
 def adjusted_win_rate_test(wins, losses, draws, num_bootstraps):
     observations = []
     observations.extend([(1, 0, 0)] * wins)

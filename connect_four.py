@@ -1,6 +1,10 @@
 import json
 from dataclasses import dataclass, asdict
-from typing import List, Any
+from typing import (
+    List,
+    Any,
+    Dict,
+)
 import environment
 import numpy
 
@@ -76,10 +80,12 @@ def generate_features(state, agents) -> numpy.array:
 @dataclass
 class Environment(environment.Environment):
     checks_by_position: Any = None
+    action_name_by_id: Dict[int, str] = None
 
     def __post_init__(self):
         super().__post_init__()
         self.checks_by_position = self.calculate_adjacent_checks()
+        _, self.action_name_by_id = self.build_action_maps()
 
     def add_agent(self, agent):
         super().add_agent(agent)
@@ -232,6 +238,11 @@ class Environment(environment.Environment):
                     return False
         return True
 
+    def build_action_maps(self):
+        action_name_by_id = {action_id: str(action_id) for action_id in self.all_possible_actions()}
+        action_id_by_name = {v: k for k, v in action_name_by_id.items()}
+        return action_id_by_name, action_name_by_id
+
     def translate_human_input(self, human_input):
         return int(human_input)
 
@@ -255,6 +266,12 @@ class Environment(environment.Environment):
             return (-1, 1)
         else:
             return (0, 0)
+
+    def early_stopped_rewards(self, state):
+        return None
+
+    def early_stopping_round(self):
+        return None
 
     def text_display(self, state, rich=True):
         '''
@@ -289,18 +306,3 @@ class Environment(environment.Environment):
 
     def run(self):
         return super().run()
-
-
-'''
-from rich import print as rprint # noqa
-from pprint import pprint
-e = Environment()
-s = e.initial_state()
-
-s = e.transition_state(s, 3)
-s = e.transition_state(s, 3)
-s = e.transition_state(s, 2)
-s = e.transition_state(s, 3)
-rprint(e.text_display(s))
-pprint(e.checks_by_position[3][1])
-'''
