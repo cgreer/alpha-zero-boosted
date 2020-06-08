@@ -9,16 +9,21 @@ in place of the Deep Neural Network for value/policy functions.
 A few "environments" (aka "games") are implemented: Quoridor, Connect
 Four, Tic-Tac-Toe.
 
+![](https://github.com/cgreer/alpha_zero_boosted/raw/master/images/quoridor_sc.png.png)
+![](https://github.com/cgreer/alpha_zero_boosted/raw/master/images/mcts_consideration_sc.png)
+
 
 # Running
 
 ## Play a game
 
 ```python3.7 play.py <environment> <species-generation> <species-generation> <time-to-move>```
+
 ```python3.7 play.py connect_four mcts_gbdt-1 human 5.0```
 
 
 ## Train a bot
 
 ```python3.7 train_bot.py <environment> <species> <num batches>```
+
 ```python3.7 train_bot.py connect_four mcts_gbdt 10```
