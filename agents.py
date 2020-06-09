@@ -62,6 +62,8 @@ NOISE_MAKER = NoiseMaker(1000)
 @dataclass
 class Agent(ABC):
     environment: Any
+    species: str
+    generation: int
     agent_num: int = field(init=False)
 
     @abstractmethod
@@ -197,6 +199,7 @@ class MCTSAgent(Agent):
     puct_explore_factor: float
     puct_noise_alpha: float
     puct_noise_influence: float
+    temperature: float = 0.0
     policy_overrides: List[Dict] = None # [agent_0_overrides, ...]
 
     def __post_init__(self):
@@ -503,12 +506,17 @@ class MCTSAgent(Agent):
         '''
         # XXX: Adapt to number of moves.
         # XXX: Adjust for tournament play vs self play
-        return .3
+        return self.temperature
 
     def select_move(self):
         child_edges = self.current_node.child_edges
-
         temperature = self.get_current_temperature()
+
+        # Adjust infinitesimal temperatures
+        # - This will make it so small it shouldn't matter
+        if (temperature is None) or (temperature == 0.0):
+            temperature = .05
+
         temp_factor = (1.0 / temperature)
 
         # Pre-calculate denominator for temperature adjustment
@@ -601,7 +609,8 @@ class MCTSAgent(Agent):
             agent_nums=list(range(len(env.agents))),
             agent=dict(
                 agent_num=self.agent_num,
-                model_version=-1, # XXX Update model-specific info
+                species=self.species,
+                generation=self.generation,
             ),
             outcome=outcome,
             replay=replay,

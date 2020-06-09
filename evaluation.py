@@ -11,7 +11,7 @@ from agents import RandomAgent, MCTSAgent
 from intuition_model import UnopinionatedValue, UniformPolicy
 from environment_registry import get_env_module
 import tictactoe
-from self_play import configure_bot
+from agent_configuration import configure_agent
 
 
 def test_trueskill():
@@ -44,11 +44,21 @@ def run_game_worker(args):
     bot_1_species, bot_1_generation = matchup_info[0]
     bot_2_species, bot_2_generation = matchup_info[1]
 
-    agent_1_settings = configure_bot(environment_name, bot_1_species, bot_1_generation)
-    agent_1 = MCTSAgent(environment=environment, **agent_1_settings)
+    Agent1, agent_1_settings = configure_agent(
+        environment_name,
+        bot_1_species,
+        bot_1_generation,
+        play_setting="evaluation",
+    )
+    agent_1 = Agent1(environment=environment, **agent_1_settings)
 
-    agent_2_settings = configure_bot(environment_name, bot_2_species, bot_2_generation)
-    agent_2 = MCTSAgent(environment=environment, **agent_2_settings)
+    Agent2, agent_2_settings = configure_agent(
+        environment_name,
+        bot_2_species,
+        bot_2_generation,
+        play_setting="evaluation",
+    )
+    agent_2 = Agent2(environment=environment, **agent_2_settings)
 
     environment.add_agent(agent_1)
     environment.add_agent(agent_2)

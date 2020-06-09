@@ -1,7 +1,6 @@
 import sys
-from agents import HumanAgent, MCTSAgent
-from self_play import configure_bot
 from environment_registry import get_env_module
+from agent_configuration import configure_agent
 
 # script.py <environment> <p1 bot name> <p2 bot_name>
 # script.py connect_four mcts_naive-6 human
@@ -9,32 +8,27 @@ environment, p1_bot_name, p2_bot_name, consideration_time = sys.argv[1:]
 consideration_time = float(consideration_time)
 
 
-def configure_agent(bot_name, consideration_time):
-    bot_species, bot_generation = bot_name.split("-")
-    bot_generation = int(bot_generation)
+def setup_agent(bot_name, consideration_time):
+    species, generation = bot_name.split("-")
+    generation = int(generation)
 
-    bot_settings = configure_bot(environment, bot_species, bot_generation)
+    agent_class, agent_settings = configure_agent(
+        environment,
+        species,
+        generation,
+        play_setting="tournament",
+    )
 
     # Fix the amount of time per move for bots
-    bot_settings["move_consideration_time"] = consideration_time
-    bot_settings["move_consideration_steps"] = 1
+    if "move_consideration_time" in agent_settings:
+        agent_settings["move_consideration_time"] = consideration_time
+        agent_settings["move_consideration_steps"] = 1
 
-    return bot_settings
+    return agent_class, agent_settings
 
 
-if p1_bot_name == "human":
-    p1_agent_settings = {}
-    P1_agent_class = HumanAgent
-else:
-    p1_agent_settings = configure_agent(p1_bot_name, consideration_time)
-    P1_agent_class = MCTSAgent
-
-if p2_bot_name == "human":
-    p2_agent_settings = {}
-    P2_agent_class = HumanAgent
-else:
-    p2_agent_settings = configure_agent(p2_bot_name, consideration_time)
-    P2_agent_class = MCTSAgent
+P1_agent_class, p1_agent_settings = setup_agent(p1_bot_name, consideration_time)
+P2_agent_class, p2_agent_settings = setup_agent(p2_bot_name, consideration_time)
 
 env_module = get_env_module(environment)
 

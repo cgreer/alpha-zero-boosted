@@ -8,7 +8,6 @@ from rich import print as rprint
 
 from environment_registry import get_env_module
 from paths import find_batch_directory
-from training_samples import iter_replay_data
 
 
 def replay_video(replay_path, speed, first_n_moves=100_000_000):

@@ -4,8 +4,7 @@ import numpy
 
 from environment_registry import get_env_module
 from evaluation import Bot, Tournament
-from agents import MCTSAgent
-from self_play import configure_bot # XXX: Refactor this out of self_play
+from agent_configuration import configure_agent
 import settings
 
 
@@ -19,12 +18,12 @@ def run_generation_ladder(
     generations = [int(round(x)) for x in numpy.linspace(1, highest_generation, num_entrants)]
     bots = []
     for i in generations:
-        bot_settings = configure_bot(environment_name, species, i)
+        Agent, agent_settings = configure_agent(environment_name, species, i, "evaluation")
         bots.append(
             Bot(
                 f"{species}-{i}",
-                MCTSAgent,
-                bot_settings,
+                Agent,
+                agent_settings,
             )
         )
 
@@ -51,12 +50,12 @@ def run_faceoff(
     # The bot your testing and the current best bot
     bots = []
     for i in range(bot_generation - 1, bot_generation + 1):
-        bot_settings = configure_bot(environment_name, bot_species, i)
+        Agent, agent_settings = configure_agent(environment_name, bot_species, i, "evaluation")
         bots.append(
             Bot(
                 f"{bot_species}-{i}",
-                MCTSAgent,
-                bot_settings,
+                Agent,
+                agent_settings,
             )
         )
 
