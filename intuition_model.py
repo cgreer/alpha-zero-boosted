@@ -10,7 +10,7 @@ from treelite.runtime import (
     Batch as TreeliteBatch,
 )
 
-from training_samples import split_train_test
+from training_samples import split_train_test, SampleData
 from gbdt_model import GBDTModel
 from paths import generate_tmp_path
 
@@ -33,12 +33,19 @@ class UniformPolicy:
 @dataclass
 class GBDTValue(GBDTModel):
 
-    def extract_training_observations(self, game_samples, test_fraction):
-        # :samples ~ dict(meta_info=..., features=..., labels=...)
-        return split_train_test(game_samples, test_fraction)
+    def extract_training_observations(
+        self,
+        game_samples,
+        test_fraction,
+    ) -> (SampleData, SampleData):
+        # :game_samples ~ dict(meta_info=..., features=..., labels=...)
+        train_samples, test_samples = split_train_test(game_samples, test_fraction)
 
-    def train(self, samples, test_fraction=.2):
-        # :samples ~ dict(meta_info=..., features=..., labels=...)
+    def train(
+        self,
+        samples: SampleData,
+        test_fraction=.2,
+    ):
         super().train(
             objective="mean_squared_error",
             eval_metrics=["mean_squared_error", "mae"],
@@ -76,7 +83,7 @@ def extract_policy_observations(features, labels):
     First we sample N samples (without replacement) proportional to the
     probability of the move. Recall that the move probability was determined
     by the results of the mcts considerations for that state. This
-    action-probabilty, proportional sample ensures we likely sample the most
+    policy-proportionate sample ensures we likely sample the most
     favorable actions for that state. It will allow the model to understand
     the top actions to take from a given state.
 
@@ -171,17 +178,14 @@ def policy_extraction_worker(args):
 class GBDTPolicy(GBDTModel):
     num_workers: int = 1
 
-    def extract_policy_observations(self, features, labels):
+    def extract_policy_observations(self, samples: SampleData):
         # Split up the data into :num_workers parts
-        features_part_paths = partition_data_to_disk("policy_features", features, self.num_workers)
-        labels_part_paths = partition_data_to_disk("policy_labels", labels, self.num_workers)
+        features_part_paths = partition_data_to_disk("policy_features", samples.features, self.num_workers)
+        labels_part_paths = partition_data_to_disk("policy_labels", samples.labels, self.num_workers)
 
         # Ship off to workers
         worker_args = []
-        for features_part_path, labels_part_path in zip(
-            features_part_paths,
-            labels_part_paths
-        ):
+        for features_part_path, labels_part_path in zip(features_part_paths, labels_part_paths):
             worker_args.append((features_part_path, labels_part_path))
         with Pool(len(worker_args)) as p:
             results = p.map(policy_extraction_worker, worker_args)
@@ -197,23 +201,35 @@ class GBDTPolicy(GBDTModel):
 
         return observation_features, observation_labels
 
-    def extract_training_observations(self, game_samples, test_fraction):
-        train_features, train_labels, test_features, test_labels = split_train_test(game_samples, test_fraction)
+    def extract_training_observations(
+        self,
+        game_samples: SampleData,
+        test_fraction,
+    ):
+        train_samples, test_samples = split_train_test(game_samples, test_fraction)
 
         # Make policy samples for each label in (features, labels) pairs
+        # - Note that this scrubbed the meta info
         print("\nBuilding policy training observations. Sit tight.")
-        train_features, train_labels = self.extract_policy_observations(train_features, train_labels)
-        test_features, test_labels = self.extract_policy_observations(test_features, test_labels)
-
-        return (
-            train_features,
-            train_labels,
-            test_features,
-            test_labels
+        train_features, train_labels = self.extract_policy_observations(train_samples)
+        train_samples = SampleData(
+            features=train_features,
+            labels=train_labels,
         )
 
-    def train(self, samples, test_fraction=.2):
-        # :samples ~ dict(meta_info=..., features=..., labels=...)
+        test_features, test_labels = self.extract_policy_observations(test_samples)
+        test_samples = SampleData(
+            features=test_features,
+            labels=test_labels,
+        )
+
+        return train_samples, test_samples
+
+    def train(
+        self,
+        samples: SampleData,
+        test_fraction=.2,
+    ):
         super().train(
             objective="cross_entropy",
             eval_metrics=["cross_entropy", "mae"],

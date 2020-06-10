@@ -1,8 +1,56 @@
+from dataclasses import dataclass
 import os
 import json
 from hashlib import md5
+from uuid import uuid4
 
 import numpy
+
+import settings
+
+
+@dataclass
+class SampleData:
+    features: numpy.array
+    labels: numpy.array
+    meta_info: numpy.array = None
+    weights: numpy.array = None
+
+    def stash_data(self):
+        base_path = f"{settings.TMP_DIRECTORY}/model-{str(uuid4())}_"
+
+        stashables = [
+            ("features", self.features),
+            ("labels", self.labels),
+            ("meta_info", self.meta_info),
+            ("weights", self.weights),
+        ]
+        for dtype, data in stashables:
+            if not data:
+                continue
+            stash_path = f"{base_path}{dtype}.npy"
+            numpy.save(stash_path, data)
+            print(f"stashed: {stash_path}")
+
+    @classmethod
+    def from_stashed_data(cls, base_path):
+        stash_path = f"{base_path}features.npy"
+        features = numpy.load(stash_path)
+
+        stash_path = f"{base_path}labels.npy"
+        labels = numpy.load(stash_path)
+
+        stash_path = f"{base_path}meta_info.npy"
+        meta_info = None
+        if os.path.exists(stash_path):
+            meta_info = numpy.load(stash_path)
+
+        stash_path = f"{base_path}weights.npy"
+        weights = None
+        if os.path.exists(stash_path):
+            weights = numpy.load(stash_path)
+
+        return cls(features, labels, meta_info, weights)
 
 
 def split_train_test(game_samples, test_fraction):
@@ -35,13 +83,19 @@ def split_train_test(game_samples, test_fraction):
     # - Convert test_set_indices to numpy array so we can do boolean operations.
     test_set_indices = numpy.array(test_set_indices)
 
-    train_features = features[test_set_indices == 0]
-    train_labels = labels[test_set_indices == 0]
+    training_sample_data = SampleData(
+        features=features[test_set_indices == 0],
+        labels=labels[test_set_indices == 0],
+        meta_info=meta_info[test_set_indices == 0],
+    )
 
-    test_features = features[test_set_indices == 1]
-    test_labels = labels[test_set_indices == 1]
+    test_sample_data = SampleData(
+        features=features[test_set_indices == 1],
+        labels=labels[test_set_indices == 1],
+        meta_info=meta_info[test_set_indices == 1],
+    )
 
-    return train_features, train_labels, test_features, test_labels
+    return training_sample_data, test_sample_data
 
 
 def extract_policy_labels(move, environment):
@@ -85,6 +139,7 @@ def samples_from_replay(
     game_bucket = calculate_game_bucket(agent_replay["id"])
     outcome = agent_replay["outcome"]
     this_agent_num = agent_replay["agent"]["agent_num"]
+    agent_generation = agent_replay["agent"]["generation"]
     game_agent_nums = agent_replay["agent_nums"]
     for move in agent_replay["replay"]:
         state = state_class.unmarshall(move["state"])
@@ -108,12 +163,13 @@ def samples_from_replay(
         for i, agent_num in enumerate(game_agent_nums):
             agent_features = features[i]
             value_sample_label = outcome[agent_num]
-            yield "value", game_bucket, agent_features, value_sample_label
+            meta_info = [game_bucket, agent_generation]
+            yield "value", meta_info, agent_features, value_sample_label
 
             # No terminal moves...
             if (agent_num == this_agent_num) and move["move"] is not None:
                 policy_labels = extract_policy_labels(move, environment)
-                yield "policy", game_bucket, agent_features, policy_labels
+                yield "policy", meta_info, agent_features, policy_labels
 
 
 # XXX: Move these to hashring.py or something

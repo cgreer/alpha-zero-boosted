@@ -6,7 +6,7 @@ import numpy
 from environment_registry import get_env_module
 from paths import build_model_paths, find_batch_directory
 from intuition_model import NaiveValue, NaivePolicy, GBDTValue, GBDTPolicy
-from training_samples import generate_training_samples
+from training_samples import generate_training_samples, SampleData
 
 
 def run_worker(args):
@@ -46,7 +46,7 @@ def run_worker(args):
             break
 
         # game_bucket, features, labels (or just label for value)
-        meta_info = [sample[1]] # just game bucket for now
+        meta_info = sample[1] # [game_bucket, generation, ...]
         if sample[0] == "value":
             value_meta.append(meta_info)
             value_features.append(sample[2]) # [[float, ...]]
@@ -195,9 +195,15 @@ def load_game_samples(
         for p in paths:
             datasets.append(numpy.load(p))
         samples[k] = numpy.concatenate(datasets)
+
+    # They should all be the same size
     assert samples["meta"].shape[0] == samples["features"].shape[0] == samples["labels"].shape[0]
 
-    return samples
+    return SampleData(
+        features=samples["features"],
+        labels=samples["labels"],
+        meta_info=samples["meta"],
+    )
 
 
 def run(
@@ -215,8 +221,6 @@ def run(
     ####################
     # Generate Samples
     ####################
-    # XXX: You can speed this up by not regenerating batches, but it's cleaner
-    # to always redo everything for now.
     for batch_num in batch_nums:
         generate_batch_samples(
             environment,
@@ -236,6 +240,7 @@ def run(
     )
 
     # XXX: Abstract
+    # Make Species.value_model()
     if bot_species == "mcts_naive":
         value_model = NaiveValue()
         policy_model = NaivePolicy()
@@ -258,8 +263,10 @@ def run(
         )
         model.train(game_samples)
         model.save(model_path)
-        del game_samples # Attempt to clear the memory, but it's Python...
         print("Saved model to", model_path)
+
+        # Attempt to clear the memory. It's Python, so we'll see what happens...
+        del game_samples
 
 
 if __name__ == "__main__":
@@ -270,21 +277,6 @@ if __name__ == "__main__":
     MAX_GAMES = 500_000
     MAX_GENERATIONAL_LOOKBACK = 10
     POSITIONS_PER_BATCH = 100 * 64_000 * 10 # moves/game * max games/batch * safety multiplier
-    '''
-    generate_batch_samples(
-        ENVIRONMENT,
-        BOT_SPECIES,
-        batch_num=5,
-        num_workers=12,
-        positions_per_batch=POSITIONS_PER_BATCH,
-    )
-    load_game_samples(
-        ENVIRONMENT,
-        BOT_SPECIES,
-        batches=[5],
-        model_type="value",
-    )
-    '''
     run(
         ENVIRONMENT,
         BOT_SPECIES,

@@ -14,6 +14,7 @@ import numpy
 import lightgbm
 
 from treelite_model import build_treelite_model
+from training_samples import SampleData
 
 
 @dataclass
@@ -35,102 +36,67 @@ class GBDTModel:
             nthread=nthread,
         )
 
-    def stash_training_data(
+    def extract_training_observations(
         self,
-        train_features,
-        train_labels,
-        test_features,
-        test_labels,
-    ):
-        base_path = f"{settings.TMP_DIRECTORY}/policy_model-{str(uuid4())}_"
-        train_path = f"{base_path}train_features.npy"
-        train_labels_path = f"{base_path}train_labels.npy"
-        test_path = f"{base_path}test_features.npy"
-        test_labels_path = f"{base_path}test_labels.npy"
-        numpy.save(train_path, train_features)
-        numpy.save(train_labels_path, train_labels)
-        numpy.save(test_path, test_features)
-        numpy.save(test_labels_path, test_labels)
-        print("\nSTASHING TRAINING DATA")
-        for p in (train_path, train_labels_path, test_path, test_labels_path):
-            print(p)
-
-    @classmethod
-    def load_stashed_training_data(self, base_path):
-        train_path = f"{base_path}train_features.npy"
-        train_labels_path = f"{base_path}train_labels.npy"
-        test_path = f"{base_path}test_features.npy"
-        test_labels_path = f"{base_path}test_labels.npy"
-
-        train_features = numpy.load(train_path)
-        train_labels = numpy.load(train_labels_path)
-        test_features = numpy.load(test_path)
-        test_labels = numpy.load(test_labels_path)
-
-        return train_features, train_labels, test_features, test_labels
-
-    def extract_training_observations(self, game_samples, test_fraction):
-        # Each set has same structure as :samples, just partitioned into games that are in the
-        # training set and games that are in the test set.
+        game_samples: SampleData,
+        test_fraction,
+    ) -> (SampleData, SampleData):
         raise NotImplementedError()
 
     def train(
         self,
         objective,
         eval_metrics,
-        samples,
+        samples: SampleData,
         test_fraction=.2,
     ):
-        # :samples ~ dict(meta_info=..., features=..., labels=...)
-
         # Make training observations from game posisitions
-        (
-            train_features,
-            train_labels,
-            test_features,
-            test_labels,
-        ) = self.extract_training_observations(samples, test_fraction)
+        train_samples, test_samples = self.extract_training_observations(samples, test_fraction)
 
-        print("Sample train features:", train_features[:1])
-        print("Sample train labels:", train_labels[:1])
+        print("Sample train features:", train_samples.features[:1])
+        print("Sample train labels:", train_samples.labels[:1])
 
-        print(f"\nTrain features shape: {train_features.shape}")
-        print(f"Train labels shape: {train_labels.shape}")
-        print(f"Test features shape: {test_features.shape}")
-        print(f"Test labels shape: {test_labels.shape}")
+        print(f"\nTrain features shape: {train_samples.features.shape}")
+        print(f"Train labels shape: {train_samples.labels.shape}")
+        print(f"Test features shape: {test_samples.features.shape}")
+        print(f"Test labels shape: {test_samples.labels.shape}")
 
         # Stash the data so we can reload it later to easily tweak with stuff
-        self.stash_training_data(train_features, train_labels, test_features, test_labels)
+        print("Stashing training samples")
+        train_samples.stash_data()
+
+        print("Stashing test samples")
+        test_samples.stash_data()
 
         # Train lgbm model/treelite model
         self.train_from_training_data(
             objective,
             eval_metrics,
-            train_features,
-            train_labels,
-            test_features,
-            test_labels,
+            train_samples,
+            test_samples,
         )
 
     def train_from_training_data(
         self,
         objective,
         eval_metrics,
-        train_features,
-        train_labels,
-        test_features,
-        test_labels,
+        train_samples: SampleData,
+        test_samples: SampleData,
     ):
-        train_data = lightgbm.Dataset(train_features, label=train_labels)
-        test_data = lightgbm.Dataset(test_features, label=test_labels)
+        train_data = lightgbm.Dataset(
+            train_samples.features,
+            label=train_samples.labels,
+        )
+        test_data = lightgbm.Dataset(
+            test_samples.features,
+            label=test_samples.labels,
+        )
 
         num_round = 15000
         early_stopping_rounds = 10
-
         # bagging_fractions = [.05, .1, .2, .3, .4]
         # bagging_freqs = [5, 10, 20, 30]
         # num_leaves_choices = [2**7, 2**8, 2**9, 2**10, 2**11]
-
         learning_rates = [.2]
         bagging_fractions = [.2]
         bagging_freqs = [10]
@@ -197,8 +163,8 @@ class GBDTModel:
 
         # Build treelite model
         #  - stash path in self.treelite_model_path
-        num_rows = test_features.shape[0]
-        annotation_samples = test_features[numpy.random.choice(num_rows, 500_000), :]
+        num_rows = test_samples.features.shape[0]
+        annotation_samples = test_samples.features[numpy.random.choice(num_rows, 500_000), :]
         self.treelite_model_path = build_treelite_model(
             lightgbm_model_path,
             annotation_samples=annotation_samples,
