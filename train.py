@@ -208,8 +208,8 @@ def load_game_samples(
 
 def run(
     environment,
-    bot_species,
-    bot_generation,
+    species,
+    generation,
     head_batch_num,
     num_workers,
     max_games=500_000,
@@ -224,7 +224,7 @@ def run(
     for batch_num in batch_nums:
         generate_batch_samples(
             environment,
-            bot_species,
+            species,
             batch_num=batch_num,
             num_workers=num_workers,
             positions_per_batch=positions_per_batch,
@@ -235,8 +235,8 @@ def run(
     ####################
     value_model_path, policy_model_path = build_model_paths(
         environment,
-        bot_species,
-        bot_generation,
+        species,
+        generation,
     )
 
     # XXX: Abstract
@@ -248,7 +248,7 @@ def run(
         value_model = GBDTValue()
         policy_model = GBDTPolicy(num_workers=num_workers)
     else:
-        raise KeyError(f"Unknown species: {bot_species}")
+        raise KeyError(f"Unknown species: {species}")
 
     model_settings = [
         ("value", value_model, value_model_path),
@@ -257,7 +257,7 @@ def run(
     for model_type, model, model_path in model_settings:
         game_samples = load_game_samples(
             environment,
-            bot_species,
+            species,
             batches=batch_nums,
             model_type=model_type,
         )

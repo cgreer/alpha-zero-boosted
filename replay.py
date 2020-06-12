@@ -20,12 +20,15 @@ def replay_video(replay_path, speed, first_n_moves=100_000_000):
     env_module = get_env_module(environment_name)
     environment = env_module.Environment()
     current_state = environment.initial_state()
+    os.system("clear")
     for i, move in enumerate(moves):
         if i >= first_n_moves:
             break
+
         # Show state
+        to_display = environment.text_display(current_state)
         os.system("clear")
-        rprint(environment.text_display(current_state))
+        rprint(to_display)
         time.sleep(speed)
 
         if move is None:

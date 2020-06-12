@@ -26,7 +26,7 @@ class SampleData:
             ("weights", self.weights),
         ]
         for dtype, data in stashables:
-            if not data:
+            if data is None:
                 continue
             stash_path = f"{base_path}{dtype}.npy"
             numpy.save(stash_path, data)
@@ -53,20 +53,20 @@ class SampleData:
         return cls(features, labels, meta_info, weights)
 
 
-def split_train_test(game_samples, test_fraction):
+def split_train_test(samples: SampleData, test_fraction):
     '''
-    Partition the games into training and test games. Positions from a game that are
-    in the training set should not be in the test set.
+    Partition the games into training and test games. Positions from a game that
+    are in the training set should not be in the test set.
 
-    If the positions from the same game are in both the training and test sets, then
-    it'll be easy for a model to overfit without early stopping catching it by memorizing
-    non-generalizable aspects of a particular game.
+    If the positions from the same game are in both the training and test sets,
+    then it'll be easy for a model to overfit without early stopping catching it
+    by memorizing non-generalizable aspects of a particular game.
 
     :test_fraction in range [0.0, 1.0]
     '''
-    meta_info = game_samples["meta"]
-    features = game_samples["features"]
-    labels = game_samples["labels"]
+    meta_info = samples.meta_info
+    features = samples.features
+    labels = samples.labels
     assert meta_info.shape[0] == features.shape[0] == labels.shape[0]
 
     # Convert test fraction to percentage from 0-100
@@ -100,8 +100,8 @@ def split_train_test(game_samples, test_fraction):
 
 def extract_policy_labels(move, environment):
     '''
-    The mcts policy labels are a vector of (move visit_count / total visits) for the node that the
-    mcts ran for.
+    The mcts policy labels are a vector of (move visit_count / total visits) for
+    the node that the mcts ran for.
     '''
     mcts_info = {}
     total_visits = 0
@@ -124,8 +124,8 @@ def calculate_game_bucket(game_id_guid):
     :game_id_guid ~ XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX
     :game_id_guid ~ A-B-C-D-E
 
-    Take the last 7 hex digits and convert to int.  That'll create a space of 268,435,455 possible
-    buckets.  Should be enough...
+    Take the last 7 hex digits and convert to int.  That'll create a space of
+    268,435,455 possible buckets.  Should be enough...
     '''
     return int(game_id_guid[-7:], 16)
 

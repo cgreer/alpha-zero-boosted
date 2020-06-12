@@ -20,11 +20,11 @@ Four, and Tic-Tac-Toe.
 
 ```python3.7 play.py <environment> <species-generation> <species-generation> <time-to-move>```
 
-```python3.7 play.py connect_four mcts_gbdt-1 human 5.0```
+```python3.7 play.py connect_four gbdt-1 human 5.0```
 
 
 ## Train a bot
 
 ```python3.7 train_bot.py <environment> <species> <num batches>```
 
-```python3.7 train_bot.py connect_four mcts_gbdt 10```
+```python3.7 train_bot.py connect_four gbdt 10```

@@ -78,5 +78,9 @@ def games_to_play_analysis():
 
 if __name__ == "__main__":
     import sys
-    adjusted_win_rate_test(int(sys.argv[1]), int(sys.argv[2]), int(sys.argv[3]), 1000)
+    wins, losses, draws = sys.argv[1].strip().split("-")
+    wins = int(wins)
+    losses = int(losses)
+    draws = int(draws)
+    adjusted_win_rate_test(wins, losses, draws, 1000)
     # games_to_play_analysis()
