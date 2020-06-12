@@ -53,11 +53,16 @@ class GBDTModel:
         # Make training observations from game posisitions
         train_samples, test_samples = self.extract_training_observations(samples, test_fraction)
 
-        print("Sample train features:", train_samples.features[:1])
-        print("Sample train labels:", train_samples.labels[:1])
+        print("Sample train feature:", train_samples.features[:1])
+        print("Sample train label:", train_samples.labels[:1])
+        if train_samples.weights is not None:
+            print("Sample train weight:", train_samples.weights[:1])
 
         print(f"\nTrain features shape: {train_samples.features.shape}")
         print(f"Train labels shape: {train_samples.labels.shape}")
+        if train_samples.weights is not None:
+            print(f"Train weights shape: {train_samples.weights.shape}")
+
         print(f"Test features shape: {test_samples.features.shape}")
         print(f"Test labels shape: {test_samples.labels.shape}")
 
@@ -83,13 +88,16 @@ class GBDTModel:
         train_samples: SampleData,
         test_samples: SampleData,
     ):
+
         train_data = lightgbm.Dataset(
             train_samples.features,
             label=train_samples.labels,
+            weight=train_samples.weights,
         )
         test_data = lightgbm.Dataset(
             test_samples.features,
             label=test_samples.labels,
+            weight=test_samples.weights,
         )
 
         num_round = 15000

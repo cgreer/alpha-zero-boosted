@@ -30,16 +30,42 @@ class UniformPolicy:
         return [uniform_probability] * len(allowable_actions)
 
 
+def calculate_weights(samples, highest_generation, strategy):
+    # Reweight based on generation
+    meta_info = samples.meta_info
+    weights = numpy.full(meta_info.shape[0], 1.0, numpy.float32)
+    for row_index in range(meta_info.shape[0]):
+        this_generation = meta_info[row_index][1] # 1 is generation
+        generations_from_highest = highest_generation - this_generation
+        weight = .2 + (.8 * (.9**generations_from_highest))
+        weights[row_index] = weight
+
+    # Renormalize weights
+    # - Want weights to sum up to num samples
+    if strategy == "rg2":
+        weights_normed = weights / (weights.sum() / weights.shape[0])
+        return weights_normed
+    else:
+        return weights
+
+
 @dataclass
 class GBDTValue(GBDTModel):
+    weighting_strat: str = None
+    highest_generation: int = None
 
     def extract_training_observations(
         self,
-        game_samples,
+        samples,
         test_fraction,
     ) -> (SampleData, SampleData):
-        # :game_samples ~ dict(meta_info=..., features=..., labels=...)
-        train_samples, test_samples = split_train_test(game_samples, test_fraction)
+        train_samples, test_samples = split_train_test(samples, test_fraction)
+
+        if self.weighting_strat:
+            train_samples.weights = calculate_weights(train_samples, self.highest_generation, self.weighting_strat)
+            test_samples.weights = calculate_weights(test_samples, self.highest_generation, self.weighting_strat)
+
+        return train_samples, test_samples
 
     def train(
         self,
