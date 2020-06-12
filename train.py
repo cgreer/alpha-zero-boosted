@@ -239,13 +239,20 @@ def run(
         generation,
     )
 
-    # XXX: Abstract
+    # XXX: Put in agent_configuration
     # Make Species.value_model()
-    if bot_species == "mcts_naive":
+    if species == "mcts_naive":
         value_model = NaiveValue()
         policy_model = NaivePolicy()
-    elif bot_species == "mcts_gbdt":
+    elif species == "gbdt":
         value_model = GBDTValue()
+        policy_model = GBDTPolicy(num_workers=num_workers)
+    elif species in ("gbdt_rg", "gbdt_rg2"):
+        strat = "rg2" if species == "gbdt_rg2" else "rg"
+        value_model = GBDTValue(
+            weighting_strat=strat,
+            highest_generation=generation - 1,
+        )
         policy_model = GBDTPolicy(num_workers=num_workers)
     else:
         raise KeyError(f"Unknown species: {species}")
@@ -271,7 +278,7 @@ def run(
 
 if __name__ == "__main__":
     ENVIRONMENT = "quoridor"
-    BOT_SPECIES = "mcts_gbdt"
+    BOT_SPECIES = "gbdt"
     BOT_GENERATION = 6 # XXX Highest + 1
     HEAD_BATCH_NUM = 6 # Highest
     MAX_GAMES = 500_000

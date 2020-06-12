@@ -15,13 +15,13 @@ def default_models(environment_name):
 
 def gbdt_configuration(
     environment_name,
+    species,
     generation,
     play_setting="self_play",
 ):
     '''
     :play_setting ~ {"self_play", "evaluation"}
     '''
-    species = "mcts_gbdt"
     env_module = get_env_module(environment_name)
 
     value_model, policy_model = default_models(environment_name)
@@ -39,6 +39,9 @@ def gbdt_configuration(
 
     # Setup consideration steps (could be fxn of env)
     if play_setting == "self_play":
+        move_consideration_steps = 800
+        move_consideration_time = 0.1
+    elif play_setting == "evaluation":
         move_consideration_steps = 800
         move_consideration_time = 0.1
     else:
@@ -81,10 +84,15 @@ def configure_agent(
     '''
     :play_setting ~ {"self_play", "evaluation"}
     '''
-    if species == "mcts_gbdt":
+    if species in ("gbdt", "gbdt_rg", "gbdt_rg2"):
         return (
             MCTSAgent,
-            gbdt_configuration(environment_name, generation, play_setting),
+            gbdt_configuration(
+                environment_name,
+                species,
+                generation,
+                play_setting,
+            ),
         )
     elif species == "human":
         settings = {"species": "human", "generation": 1}
