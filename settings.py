@@ -22,7 +22,7 @@ HOME = str(Path.home())
 VERBOSITY = int(os.getenv("RL_VERBOSE")) if os.getenv("RL_VERBOSE") else 3
 
 ROOT_DATA_DIRECTORY = f"{HOME}/rl_data"
-
+SYSTEM_STATS_DIRECTORY = f"{HOME}/system_monitoring"
 TMP_DIRECTORY = "/tmp"
 
 NUM_THREADS = 14
