@@ -1,4 +1,5 @@
-from agents import HumanAgent, MCTSAgent
+from human_agent import HumanAgent
+from mcts_agent import MCTSAgent
 from environment_registry import get_env_module
 import intuition_model
 from paths import build_model_paths

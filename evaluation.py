@@ -7,7 +7,8 @@ from multiprocessing import Pool
 
 from trueskill import Rating, quality_1vs1, rate_1vs1
 
-from agents import RandomAgent, MCTSAgent
+from random_agent import RandomAgent
+from mcts_agent import MCTSAgent
 from intuition_model import UnopinionatedValue, UniformPolicy
 from environment_registry import get_env_module
 import tictactoe

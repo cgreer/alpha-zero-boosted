@@ -48,7 +48,8 @@ with time_operation(op, BASE_ITERATIONS) as op:
     for i in range(op.num_interations):
         d.rvs()
 
-from agents import NOISE_MAKER # noqa
+from noise_maker import NoiseMaker # noqa
+NOISE_MAKER = NoiseMaker(1000)
 op = "NOISE_MAKER.make_noise(.2, 10)"
 with time_operation(op, BASE_ITERATIONS) as op:
     for i in range(op.num_interations):

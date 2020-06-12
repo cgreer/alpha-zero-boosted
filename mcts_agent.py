@@ -1,5 +1,4 @@
-from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import (
     Any,
     List,
@@ -9,138 +8,15 @@ from typing import (
 import json
 import math
 import pathlib
-import random
 import settings
 import time
 
 import numpy
 from rich import print as rprint
 
+from agent import Agent
+from noise_maker import NoiseMaker
 from text import stitch_text_blocks
-
-
-@dataclass
-class NoiseMaker:
-    '''
-    Presample and cache dirichlet noise
-    '''
-    num_samples_per_parameter: int = 10_000
-    highest_index: int = None
-    noise: Any = None
-
-    def __post_init__(self):
-        self.highest_index = self.num_samples_per_parameter - 1
-        self.noise = {}
-
-    def _sample_noise(self, alpha, size):
-        return numpy.random.dirichlet([alpha] * size, self.num_samples_per_parameter).tolist()
-
-    def make_noise(self, alpha, size):
-        # Lookup cached noise
-        # - If there is no previously cached noise then make some
-        try:
-            noise_data = self.noise[(alpha, size)]
-        except KeyError:
-            # Using an except avoids the "if not in" every call.  Normally I'd call "premature
-            # optimization", but entire class exists to sample noise fast for an inner loop that
-            # needs to be speedy.
-            noise_data = [0, self._sample_noise(alpha, size)]
-            self.noise[(alpha, size)] = noise_data
-
-        # If your runway of noise has run out, cache some more.
-        if noise_data[0] == self.highest_index:
-            self.noise[(alpha, size)] = [0, self._sample_noise(alpha, size)]
-        else:
-            noise_data[0] = noise_data[0] + 1
-
-        return noise_data[1][noise_data[0]]
-
-
-NOISE_MAKER = NoiseMaker(1000)
-
-
-@dataclass
-class Agent(ABC):
-    environment: Any
-    species: str
-    generation: int
-    agent_num: int = field(init=False)
-
-    @abstractmethod
-    def __post_init__(self):
-        self.agent_num = None
-
-    @abstractmethod
-    def set_agent_num(self, agent_num):
-        self.agent_num = agent_num
-
-    @abstractmethod
-    def setup(self, initial_state):
-        pass
-
-    @abstractmethod
-    def handle_move(self, initial_state):
-        pass
-
-    @abstractmethod
-    def make_move(self, initial_state):
-        pass
-
-
-@dataclass
-class RandomAgent(Agent):
-    current_state: Any = None
-
-    def __post_init__(self):
-        super().__post_init__()
-
-    def set_agent_num(self, agent_num):
-        super().set_agent_num(agent_num)
-
-    def setup(self, initial_state):
-        self.current_state = initial_state
-
-    def handle_move(self, move, resulting_state):
-        self.current_state = resulting_state
-
-    def make_move(self):
-        eligible_actions = self.environment.enumerate_actions(self.current_state)
-        return random.choice(eligible_actions)
-
-
-@dataclass
-class HumanAgent(Agent):
-    current_state: Any = None
-
-    def __post_init__(self):
-        super().__post_init__()
-
-    def set_agent_num(self, agent_num):
-        super().set_agent_num(agent_num)
-
-    def setup(self, initial_state):
-        self.current_state = initial_state
-        if not hasattr(initial_state, "whose_move"):
-            raise RuntimeError("Agent requires knowing whose move it is each state")
-
-    def handle_move(self, move, resulting_state):
-        self.current_state = resulting_state
-
-    def make_move(self):
-        allowable_actions = self.environment.enumerate_actions(self.current_state)
-        while True:
-            move = input("Move? ")
-            try:
-                move = self.environment.translate_human_input(move)
-            except Exception as e:
-                print(e)
-                print("Not an eligible move!\n")
-
-            if move not in allowable_actions:
-                print("Not an eligible move!\n")
-                continue
-            break
-        return move
 
 
 @dataclass
@@ -204,6 +80,7 @@ class MCTSAgent(Agent):
 
     def __post_init__(self):
         super().__post_init__()
+        self.noise_maker = NoiseMaker(1000)
         if self.policy_overrides is None:
             self.policy_overrides = [None, None]
 
@@ -339,7 +216,7 @@ class MCTSAgent(Agent):
         # - Note that this noise is added for every node in this implementation,
         #   but I believe AZ did it just for the root consideration node.
         # noise = numpy.random.dirichlet([noise_alpha] * len(node.child_edges))
-        noise = NOISE_MAKER.make_noise(noise_alpha, len(node.child_edges))
+        noise = self.noise_maker.make_noise(noise_alpha, len(node.child_edges))
 
         # Get highest edge value
         sqrt_total_node_visits = math.sqrt(total_node_visits)
