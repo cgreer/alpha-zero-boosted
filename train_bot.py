@@ -13,80 +13,94 @@ def run(
     species,
     num_batches,
     num_workers=12,
-    adjusted_win_rate_threshold=0.55,
-    games_per_batch=5000,
+    adjusted_win_rate_threshold=0.51,
+    games_per_batch=3000,
+    num_assessment_games=200,
 ):
+    num_faceoff_rounds = math.ceil(num_assessment_games / num_workers) # Will play at least num_workers per round
 
-    training_info = TrainingInfo.load(
-        environment,
-        species,
-    )
-    last_batch = training_info.current_batch + num_batches - 1
-
-    num_faceoff_rounds = math.ceil(150 / num_workers) # Will play at least num_workers per round
-
+    training_info = TrainingInfo.load(environment, species)
+    final_training_batch = len(training_info.batches) + num_batches
     for _ in range(num_batches):
-        print(f"\n\nBatch {training_info.current_batch} / {last_batch}")
+        current_batch = len(training_info.batches) + 1
+        generation_self_play = training_info.current_self_play_generation()
+        generation_training = generation_self_play + 1
+
+        print(f"\n\nBatch {current_batch} / {final_training_batch}")
         print(f"environment: {environment}, species: {species}")
-        training_generation = training_info.self_play_bot_generation + 1
+        print(f"self-play generation: {generation_self_play}")
 
         # Ensure directories are made/etc.
         # - Not sure this actually depends on generation, but maybe it will later.
         setup_filesystem(
             environment,
             species,
-            training_info.self_play_bot_generation,
+            generation_self_play,
         )
 
         # Self play another batch
         print("\n\nSelf Play")
-        st_time = time.time()
+        self_play_start_time = time.time()
         run_self_play(
             environment,
             species,
-            training_info.self_play_bot_generation,
+            generation_self_play,
             games_per_batch,
-            training_info.current_batch,
+            current_batch,
             num_workers,
         )
-        elapsed = round(time.time() - st_time, 1)
+        self_play_end_time = time.time()
+        elapsed = round(self_play_end_time - self_play_start_time, 1)
         games_per_sec = round(games_per_batch / elapsed, 1)
         print(f"\nSelf play finished in {elapsed} seconds")
         print(f"Games played: {games_per_batch}, games per sec: {games_per_sec}")
 
         # Train new model
         print("\n\nTraining")
-        st_time = time.time()
+        training_start_time = time.time()
         run_model_training(
             environment,
             species,
-            training_generation,
-            training_info.current_batch,
+            generation_training,
+            current_batch,
             num_workers,
         )
-        elapsed = round(time.time() - st_time, 1)
+        training_end_time = time.time()
+        elapsed = round(training_end_time - training_end_time, 1)
         print(f"\nTrained new models in {elapsed} seconds")
 
         # Assess new model
         print("\n\nAssessing")
-        st_time = time.time()
+        assessment_start_time = time.time()
         contender_matchup_info = run_faceoff(
             environment,
             species,
-            training_generation,
+            generation_training,
             num_rounds=num_faceoff_rounds,
             num_workers=num_workers,
         )
-        elapsed = round(time.time() - st_time, 1)
+        assessment_end_time = time.time()
+        elapsed = round(assessment_end_time - assessment_start_time, 1)
         print(f"\nAssessed new model in {elapsed} seconds")
 
         adjusted_win_rate = contender_matchup_info.win_rate(draw_weight=0.5)
         print("Adjusted Win Rate:", adjusted_win_rate)
+        generation_trained = None
         if adjusted_win_rate >= adjusted_win_rate_threshold:
-            training_info.self_play_bot_generation += 1
-            print("FOUND NEW BOT:", training_info.self_play_bot_generation)
-        training_info.current_batch += 1
-        training_info.save()
+            generation_trained = generation_training
+            print("FOUND NEW BOT:", generation_trained)
+
+        training_info.finalize_batch(
+            self_play_start_time=self_play_start_time,
+            self_play_end_time=self_play_end_time,
+            training_start_time=training_start_time,
+            training_end_time=training_end_time,
+            assessment_start_time=assessment_start_time,
+            assessment_end_time=assessment_end_time,
+            generation_self_play=generation_self_play,
+            generation_trained=generation_trained,
+            assessed_awr=adjusted_win_rate,
+        )
 
 
 if __name__ == "__main__":
