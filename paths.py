@@ -1,7 +1,13 @@
 import os
 from uuid import uuid4
+import pathlib
 
 from settings import ROOT_DATA_DIRECTORY, TMP_DIRECTORY
+
+
+def full_path_mkdir_p(full_path):
+    dir_name, base_name = os.path.split(full_path)
+    pathlib.Path(dir_name).mkdir(parents=True, exist_ok=True)
 
 
 def generate_tmp_path(key, suffix):
@@ -21,6 +27,10 @@ def build_replay_directory(environment, species, generation, batch):
     file_part = f"batch_{batch:06d}_{generation:06d}"
 
     return f"{root_part}/{file_part}"
+
+
+def build_tournament_results_path(key):
+    return f"{ROOT_DATA_DIRECTORY}/tournaments/{key}.json"
 
 
 def find_batch_directory(environment, species, batch):

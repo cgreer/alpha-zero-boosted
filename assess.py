@@ -1,10 +1,12 @@
 import sys
+import time
 
 import numpy
 
 from environment_registry import get_env_module
 from evaluation import Bot, Tournament
 from agent_configuration import configure_agent
+from paths import build_tournament_results_path
 import settings
 
 
@@ -12,10 +14,11 @@ def run_generation_ladder(
     environment_name,
     species_list, # [(species, low_gen, high_gen), ...]
     num_workers=1,
+    entrants_per_species=8,
 ):
     bots = []
     for species, lowest_generation, highest_generation in species_list:
-        num_entrants = 6
+        num_entrants = entrants_per_species
         generations = [int(round(x)) for x in numpy.linspace(lowest_generation, highest_generation, num_entrants)]
         generations = list(set(generations))
         for i in generations:
@@ -29,14 +32,23 @@ def run_generation_ladder(
                 )
             )
 
+    species_str = []
+    for species, lg, hg in species_list:
+        species_str.append(f"{species}-{lg}-{hg}")
+    species_str.sort()
+    species_str = "__".join(species_str)
+    tournament_key = f"{round(time.time())}-{species_str}"
+    results_path = build_tournament_results_path(tournament_key)
+
     env_class = get_env_module(environment_name)
     tournament = Tournament.setup(
         environment=env_class.Environment,
         bots=bots,
     )
-    for i in range(100):
+    for i in range(300):
         tournament.ladder(num_rounds=1, num_workers=num_workers)
         tournament.display_results()
+        tournament.save_results(results_path)
 
 
 def run_faceoff(
@@ -81,7 +93,6 @@ if __name__ == "__main__":
     species_list = species_list_str.split(",")
     species_list = [x.split("-") for x in species_list]
     species_list = [(x[0], int(x[1].split("/")[0]), int(x[1].split("/")[1])) for x in species_list]
-    print(species_list)
 
     run_generation_ladder(
         environment_name=sys.argv[1],

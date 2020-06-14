@@ -1,38 +1,18 @@
 from dataclasses import dataclass
 from itertools import combinations
-import copy
+import json
 import random
 import typing
 from multiprocessing import Pool
 
+import numpy
+from rich import print as rprint
 from trueskill import Rating, quality_1vs1, rate_1vs1
 
-from random_agent import RandomAgent
-from mcts_agent import MCTSAgent
-from intuition_model import UnopinionatedValue, UniformPolicy
-from environment_registry import get_env_module
-import tictactoe
 from agent_configuration import configure_agent
-
-
-def test_trueskill():
-    # Defaults to ...
-    agent_1_rating = Rating(100)
-    agent_2_rating = Rating(100)
-    print(agent_1_rating)
-    print(agent_2_rating)
-
-    p_draw = quality_1vs1(agent_1_rating, agent_2_rating)
-    print("quality P(draw)?:", p_draw)
-
-    # play game, assume agent_1 wins
-    for i in range(20):
-        agent_1_rating, agent_2_rating = rate_1vs1(agent_1_rating, agent_2_rating, drawn=True)
-        print(agent_1_rating)
-        print(agent_2_rating)
-
-        p_draw = quality_1vs1(agent_1_rating, agent_2_rating)
-        print("quality P(draw)?:", p_draw)
+from environment_registry import get_env_module
+from paths import full_path_mkdir_p
+from training_samples import fast_deterministic_hash
 
 
 def run_game_worker(args):
@@ -241,53 +221,91 @@ class Tournament:
 
         return results
 
+    def calculate_matchup_probabilities(self):
+        # Calculate [P(matchup), ...] for every entrant.
+        matchup_probs_by_entrant = {} # name: ([opp_name...], [matchup_prob...])
+        for name, entrant in self.entrants.items():
+            opp_names = []
+            p_draws = []
+
+            # Get P(draw | opp) for every opp
+            for opp_name, opp_entrant in self.entrants.items():
+                if name == opp_name:
+                    continue
+                opp_names.append(opp_name)
+                p_draw = quality_1vs1(entrant.skill_rating, opp_entrant.skill_rating)
+                p_draws.append(p_draw)
+
+            # Normalize by sum(p_draw)
+            p_draw_sum = sum(p_draws)
+            matchup_probs = [x / p_draw_sum for x in p_draws]
+
+            # Stash
+            matchup_probs_by_entrant[name] = (opp_names, matchup_probs)
+        return matchup_probs_by_entrant
+
+    def matchmake(self, num_games):
+        # Matchmaker, matchmaker, make me a match
+        matchup_probs_by_entrant = self.calculate_matchup_probabilities()
+        matchups = []
+        while len(matchups) < num_games:
+            # Select a random entrant to matchmake for.
+            entrants = list(self.entrants.items())
+            entrants.sort(key=lambda x: random.random())
+            name, entrant = entrants[0]
+
+            # Sample a game based on P(draw | opponent)
+            opp_names, opp_matchup_probs = matchup_probs_by_entrant[name]
+            opp_name = numpy.random.choice(
+                opp_names,
+                size=1,
+                replace=True,
+                p=opp_matchup_probs,
+            )[0]
+            matchups.append([entrant, self.entrants[opp_name]])
+        return matchups
+
     def ladder(self, num_rounds, num_workers=1):
         '''
-        For every entrant, play 3 games every round:
-            - 1 opponent that is closest above you
-            - 1 opponent that is closest below you
-            - 1 random opponent
-
-        If you're the lowest-ranked player, play the opponent above you twice.
-        If you're the highest-ranked player, play the opponent below you twice.
-
-        XXX: Better way to matchmake?
+        Each round every entrant plays N games with opponents. The games are
+        selected so that your P(match | opponent) is proportional to your P(draw
+        | opponent)
         '''
-        entrants = list(self.entrants.values())
         for round_num in range(num_rounds):
-            # Sort by skill level
-            entrants.sort(key=lambda x: x.skill_rating.mu)
-
-            # Make at least as many matchups as workers
-            matchups = []
-            while len(matchups) < num_workers:
-                for i in range(len(entrants)):
-                    if i == 0:
-                        matchups.append([entrants[i], entrants[i + 1]])
-                        matchups.append([entrants[i], entrants[i + 1]])
-                    elif i == (len(entrants) - 1):
-                        matchups.append([entrants[i], entrants[i - 1]])
-                        matchups.append([entrants[i], entrants[i - 1]])
-                    else:
-                        matchups.append([entrants[i], entrants[i - 1]])
-                        matchups.append([entrants[i], entrants[i + 1]])
-                    matchups.append([
-                        entrants[i],
-                        random.choice([x for x in entrants if x != entrants[i]]),
-                    ])
-
+            matchups = self.matchmake(num_workers)
             results = self.run_games(matchups, num_workers)
             for matchup_info, outcomes in results:
                 matchup_entrants = []
                 for bot_species, bot_generation in matchup_info:
                     bot_name = f"{bot_species}-{bot_generation}"
-                    for en in entrants:
+
+                    # XXX: Tired... isn't this just a lookup?
+                    for en in self.entrants.values():
                         if en.bot.name == bot_name:
                             matchup_entrants.append(en)
                             break
                     else:
                         raise KeyError(f"Couldn't find the bot: {bot_name}")
                 self.handle_game_outcome(matchup_entrants, outcomes)
+
+    def save_results(self, output_path):
+        results = []
+        for entrant in self.entrants.values():
+            species, generation = entrant.bot.name.split("-")
+            generation = int(generation)
+            results.append(
+                (
+                    species,
+                    generation,
+                    entrant.skill_rating.mu,
+                    entrant.skill_rating.sigma,
+                )
+            )
+
+        full_path_mkdir_p(output_path)
+        with open(output_path, 'w') as f:
+            f.write(json.dumps(results))
+        print(f"\nSaved results to: {output_path}")
 
     def display_results(self):
         # Print table of win rates (order by descending)
@@ -296,29 +314,31 @@ class Tournament:
             for other_entrant in self.entrants.values():
                 if other_entrant == entrant:
                     continue
-                vs_str = f"{entrant.bot.name} v. {other_entrant.bot.name}"
+                vs_str = f"{entrant.bot.name:<15} v. {other_entrant.bot.name:<15}"
                 if other_entrant.bot.name not in entrant.matchup_histories:
                     record = "0-0-0"
                 else:
                     record = entrant.matchup_histories[other_entrant.bot.name].record()
-                table_contents.append((vs_str, record))
+
+                sort_key = (entrant.bot.name.split("-")[0], int(entrant.bot.name.split("-")[1]))
+                table_contents.append((vs_str, record, sort_key))
 
         # Order by name
         print()
         print()
         print("{:<60}{:>30}".format("BOT", "RECORD"))
-        table_contents.sort(key=lambda x: x[0].split(" v. ")[0], reverse=True)
-        for vs_str, record in table_contents:
-            print("{:<60}{:>30}".format(vs_str, record))
+        table_contents.sort(key=lambda x: x[2])
+        for vs_str, record, sort_key in table_contents:
+            color = fast_deterministic_hash(f"{sort_key}") % 256
+            row = "{:<60}{:>30}".format(vs_str, record)
+            rprint(f"[{color}]{row}[/{color}]")
 
         # Print table of skill_rating (order by descending skill)
         table_contents = []
         for entrant in self.entrants.values():
             table_contents.append((entrant.bot.name, entrant.skill_rating.mu, entrant.skill_rating.sigma))
         print()
-        print("{:<60}{:>30}{:>30}".format("BOT", "SKILL", "SIGMA"))
+        print("{:<30}{:>30}{:>30}".format("BOT", "SKILL", "SIGMA"))
         table_contents.sort(key=lambda x: x[1], reverse=True)
         for name, skill, sigma in table_contents:
-            print("{:<60}{:>30}{:>30}".format(name, round(skill, 2), round(sigma, 2)))
-
             print("{:<30}{:>30}{:>30}".format(name, round(skill, 2), round(sigma, 2)))
