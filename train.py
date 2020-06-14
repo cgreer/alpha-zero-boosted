@@ -244,10 +244,17 @@ def run(
     if species == "mcts_naive":
         value_model = NaiveValue()
         policy_model = NaivePolicy()
-    elif species == "gbdt":
+    elif species in (
+        "gbdt",
+        "gbdt_pcr",
+        "gbdt_pcr_v",
+    ):
         value_model = GBDTValue()
         policy_model = GBDTPolicy(num_workers=num_workers)
-    elif species in ("gbdt_rg", "gbdt_rg2"):
+    elif species in (
+        "gbdt_rg",
+        "gbdt_rg2",
+    ):
         strat = "rg2" if species == "gbdt_rg2" else "rg"
         value_model = GBDTValue(
             weighting_strat=strat,

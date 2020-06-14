@@ -1,15 +1,16 @@
 from dataclasses import dataclass
+import json
+import math
+import pathlib
+import random
+import settings
+import time
 from typing import (
     Any,
     List,
     Tuple,
     Dict,
 )
-import json
-import math
-import pathlib
-import settings
-import time
 
 import numpy
 from rich import print as rprint
@@ -70,12 +71,15 @@ class MCTSAgent(Agent):
     feature_extractor: Any
     value_model: Any
     policy_model: Any
-    move_consideration_steps: float
     move_consideration_time: float
     puct_explore_factor: float
     puct_noise_alpha: float
     puct_noise_influence: float
+    full_search_proportion: float
+    full_search_steps: float
+    partial_search_steps: float
     temperature: float = 0.0
+    require_full_steps: bool = True
     policy_overrides: List[Dict] = None # [agent_0_overrides, ...]
 
     def __post_init__(self):
@@ -419,8 +423,13 @@ class MCTSAgent(Agent):
         return selected_edge.move
 
     def make_move(self):
+        # Playout Cap Randomization
+        consideration_steps = self.full_search_steps
+        if random.random() > self.full_search_proportion:
+            consideration_steps = self.partial_search_steps
+
         self.run_mcts_considerations(
-            self.move_consideration_steps,
+            consideration_steps,
             self.move_consideration_time,
             puct_explore_factor=self.puct_explore_factor,
             puct_noise_alpha=self.puct_noise_alpha,
@@ -488,6 +497,14 @@ class MCTSAgent(Agent):
                 agent_num=self.agent_num,
                 species=self.species,
                 generation=self.generation,
+                puct_explore_factor=self.puct_explore_factor,
+                puct_noise_alpha=self.puct_noise_alpha,
+                puct_noise_influence=self.puct_noise_influence,
+                full_search_proportion=self.full_search_proportion,
+                full_search_steps=self.full_search_steps,
+                partial_search_steps=self.partial_search_steps,
+                temperature=self.temperature,
+                require_full_steps=self.require_full_steps,
             ),
             outcome=outcome,
             replay=replay,

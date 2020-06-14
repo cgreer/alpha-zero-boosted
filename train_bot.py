@@ -66,7 +66,7 @@ def run(
             num_workers,
         )
         training_end_time = time.time()
-        elapsed = round(training_end_time - training_end_time, 1)
+        elapsed = round(training_end_time - training_start_time, 1)
         print(f"\nTrained new models in {elapsed} seconds")
 
         # Assess new model
@@ -84,7 +84,7 @@ def run(
         print(f"\nAssessed new model in {elapsed} seconds")
 
         adjusted_win_rate = contender_matchup_info.win_rate(draw_weight=0.5)
-        print("Adjusted Win Rate:", adjusted_win_rate)
+        print("Adjusted Win Rate:", round(adjusted_win_rate, 3))
         generation_trained = None
         if adjusted_win_rate >= adjusted_win_rate_threshold:
             generation_trained = generation_training

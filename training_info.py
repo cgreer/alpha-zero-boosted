@@ -4,7 +4,6 @@ import json
 import pathlib
 from typing import (
     List,
-    Dict,
 )
 
 from paths import build_model_directory, build_training_info_path

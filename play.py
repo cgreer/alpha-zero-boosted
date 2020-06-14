@@ -22,7 +22,6 @@ def setup_agent(bot_name, consideration_time):
     # Fix the amount of time per move for bots
     if "move_consideration_time" in agent_settings:
         agent_settings["move_consideration_time"] = consideration_time
-        agent_settings["move_consideration_steps"] = 1
 
     return agent_class, agent_settings
 

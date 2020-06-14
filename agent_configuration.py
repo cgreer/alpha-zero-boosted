@@ -38,26 +38,20 @@ def gbdt_configuration(
         policy_model = intuition_model.GBDTPolicy()
         policy_model.load(policy_model_path)
 
-    # Setup consideration steps (could be fxn of env)
+    move_consideration_time = 3.0
+    temperature = 0.0
+    full_search_proportion = 1.0
+    full_search_steps = 800
+    partial_search_steps = full_search_steps // 5
+
+    # Play-setting dependent
+    # - XXX Add Puct params
+    lower_bound_time = 0.01
     if play_setting == "self_play":
-        move_consideration_steps = 800
-        move_consideration_time = 0.1
+        temperature = .3 # XXX Make a temp profile per move
+        move_consideration_time = lower_bound_time
     elif play_setting == "evaluation":
-        move_consideration_steps = 800
-        move_consideration_time = 0.1
-    else:
-        move_consideration_steps = 800
-        move_consideration_time = 3.0
-
-    # Setup puct params (could be fxn of env)
-    # - XXX TODO
-
-    # Setup temperature (could be fxn of env)
-    # - XXX Make a profile per move
-    if play_setting == "self_play":
-        temperature = .3
-    else:
-        temperature = 0.0
+        move_consideration_time = lower_bound_time
 
     return dict(
         species=species,
@@ -67,11 +61,13 @@ def gbdt_configuration(
         feature_extractor=env_module.generate_features,
         value_model=value_model,
         policy_model=policy_model,
-        move_consideration_steps=move_consideration_steps, # at least N steps
         move_consideration_time=move_consideration_time, # at least N seconds
         puct_explore_factor=1.0,
         puct_noise_alpha=0.4,
         puct_noise_influence=0.25,
+        full_search_proportion=full_search_proportion,
+        full_search_steps=full_search_steps,
+        partial_search_steps=partial_search_steps,
         temperature=temperature,
     )
 
@@ -85,16 +81,30 @@ def configure_agent(
     '''
     :play_setting ~ {"self_play", "evaluation"}
     '''
-    if species in ("gbdt", "gbdt_rg", "gbdt_rg2"):
-        return (
-            MCTSAgent,
-            gbdt_configuration(
-                environment_name,
-                species,
-                generation,
-                play_setting,
-            ),
+    if species in (
+        "gbdt",
+        "gbdt_rg",
+        "gbdt_rg2",
+        "gbdt_pcr",
+        "gbdt_pcr_v",
+    ):
+        Agent = MCTSAgent
+        agent_settings = gbdt_configuration(
+            environment_name,
+            species,
+            generation,
+            play_setting,
         )
+
+        # PCR does PCR during self-play
+        if species == "gbdt_pcr" and play_setting == "self_play":
+            agent_settings["full_search_proportion"] = .2
+
+        if species == "gbdt_pcr_v" and play_setting == "self_play":
+            agent_settings["full_search_proportion"] = .2
+            agent_settings["require_full_steps"] = False
+
+        return Agent, agent_settings
     elif species == "human":
         settings = {"species": "human", "generation": 1}
         return (

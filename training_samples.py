@@ -130,17 +130,53 @@ def calculate_game_bucket(game_id_guid):
     return int(game_id_guid[-7:], 16)
 
 
+def is_trainable_value(
+    is_terminal_position,
+    num_visits,
+    full_search_steps,
+    require_full_steps=True,
+):
+    # Terminal positions are valuable even though there are no mcts
+    # considerations
+    if is_terminal_position:
+        return True
+
+    if require_full_steps:
+        if num_visits < full_search_steps:
+            return False
+
+    return True
+
+
+def is_trainable_policy(
+    is_terminal_position,
+    num_visits,
+    full_search_steps,
+):
+    # Terminal positions have no actions...
+    if is_terminal_position:
+        return False
+
+    if num_visits < full_search_steps:
+        return False
+
+    return True
+
+
 def samples_from_replay(
     agent_replay,
     feature_extractor,
     state_class,
     environment,
 ):
+
     game_bucket = calculate_game_bucket(agent_replay["id"])
     outcome = agent_replay["outcome"]
     this_agent_num = agent_replay["agent"]["agent_num"]
     agent_generation = agent_replay["agent"]["generation"]
     game_agent_nums = agent_replay["agent_nums"]
+    full_search_steps = agent_replay["agent"]["full_search_steps"]
+    require_full_steps = agent_replay["agent"].get("require_full_steps", True)
     for move in agent_replay["replay"]:
         state = state_class.unmarshall(move["state"])
 
@@ -151,25 +187,63 @@ def samples_from_replay(
         if state.whose_move != this_agent_num:
             continue
 
+        # Get num_visits
+        num_visits = 0
+        for pi in move["policy_info"]:
+            # [move_id, prior_probability, num_visits, sum_rewards]
+            # [ 0, 0.10030386596918106, 0, 0 ]
+            num_visits += pi[2]
+
+        # Early stopped positions do *not* count as terminal.  The last (state,
+        # action) pair for them will have a valid action.
+        is_terminal_position = move["move"] is None
+
+        # Check if sample is trainable
+        value_trainable = is_trainable_value(
+            is_terminal_position,
+            num_visits,
+            full_search_steps,
+            require_full_steps=require_full_steps,
+        )
+        policy_trainable = is_trainable_policy(
+            is_terminal_position,
+            num_visits,
+            full_search_steps,
+        )
+
+        # Short circuit: Don't even extract features if we know there's no
+        # samples to be had.
+        if (not value_trainable) and (not policy_trainable):
+            continue
+
         # Generate samples
         # - Generate N value samples, one from each agent's POV
         # - Generate 1 policy sample from this agent's pov
         # - Other agents' replays will cover other (s, a) policy samples not covered from
         #   this agent's moves.
-        # XXX How to handle terminal states for value?
-        #   - Technically you should learn the pattern of terminal states and understand their
-        #     value...  Might be good for them to bend parameters to detect them.
+        #
+        # How should we handle terminal states for value?
+        #   - Technically you should learn the pattern of terminal states and
+        #     understand their value...  Might be good for them to bend parameters
+        #     to detect them.
+        #   - XXX: Double check that this is the right thing to do.
         features = feature_extractor(state, game_agent_nums)
         for i, agent_num in enumerate(game_agent_nums):
             agent_features = features[i]
             value_sample_label = outcome[agent_num]
             meta_info = [game_bucket, agent_generation]
-            yield "value", meta_info, agent_features, value_sample_label
 
-            # No terminal moves...
-            if (agent_num == this_agent_num) and move["move"] is not None:
-                policy_labels = extract_policy_labels(move, environment)
-                yield "policy", meta_info, agent_features, policy_labels
+            # Value sample
+            if value_trainable:
+                yield "value", meta_info, agent_features, value_sample_label
+
+            # Policy sample
+            if agent_num != this_agent_num:
+                continue
+            if not policy_trainable:
+                continue
+            policy_labels = extract_policy_labels(move, environment)
+            yield "policy", meta_info, agent_features, policy_labels
 
 
 # XXX: Move these to hashring.py or something
