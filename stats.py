@@ -42,5 +42,5 @@ def describe_sample(samples):
         print(f"{ntile:<15}{ptile:<15}")
 
 
-x = numpy.random.normal(0, 1, 1000)
-describe_sample(x)
+# x = numpy.random.normal(0, 1, 1000)
+# describe_sample(x)

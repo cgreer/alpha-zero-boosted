@@ -222,7 +222,7 @@ class AgentReplay:
                 yield position
                 continue
 
-            if position.state.whose_move == self.agent_num:
+            if position.state.whose_move == self.agent_settings.agent_num:
                 yield position
 
     def play_cli_video(

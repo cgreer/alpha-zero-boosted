@@ -106,3 +106,9 @@ def run(
 if __name__ == "__main__":
     environment, species, num_batches = sys.argv[1:]
     run(environment, species, int(num_batches))
+    '''
+    environment = "connect_four"
+    for _ in range(10):
+        run(environment, "gbdt_pcr", 1)
+        run(environment, "gbdt_pcr_v", 1)
+    '''
