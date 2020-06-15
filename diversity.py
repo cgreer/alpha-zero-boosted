@@ -5,6 +5,8 @@ from train import find_batch_directory
 
 
 def retrieve_move_lists(environment, species, batch_num):
+    raise NotImplementedError() # fix iter replays
+
     print("\nGetting move lists")
     replay_directory = find_batch_directory(environment, species, batch_num)
     games = []

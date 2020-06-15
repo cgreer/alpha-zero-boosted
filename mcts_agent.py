@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 import json
 import math
-import pathlib
 import random
 import settings
 import time
@@ -16,8 +15,10 @@ import numpy
 from rich import print as rprint
 
 from agent import Agent
+from agent_replay import AgentReplay
 from noise_maker import NoiseMaker
 from text import stitch_text_blocks
+from paths import full_path_mkdir_p
 
 
 @dataclass
@@ -133,11 +134,15 @@ class MCTSAgent(Agent):
 
         # Go up the tree one move and prune all the downtree nodes except the
         # one the game ended up moving into.
+        # - Set them to None as well - this prevents errors from trying to
+        #   things like print them after you've deleted them (because Python still
+        #   thinks there is a dataclass there, for e.g.).
         parent_node = self.current_node.parent_edge.parent_node
         for child_edge in parent_node.child_edges:
             if child_edge.child_node == self.current_node:
                 continue
             del child_edge.child_node
+            child_edge.child_node = None
 
     def add_node(self, state, parent_edge):
         '''
@@ -437,22 +442,7 @@ class MCTSAgent(Agent):
         )
         return self.select_move()
 
-    def record_replay(self, output_dir, was_early_stopped):
-        data = self.replay_data(was_early_stopped)
-        game_id = data["id"]
-        agent_num = data["agent"]["agent_num"]
-
-        # mkdir -p replay path
-        pathlib.Path(output_dir).mkdir(parents=True, exist_ok=True)
-        output_path = f"{output_dir}/{game_id}-{agent_num}.json"
-
-        with open(output_path, 'w') as fout:
-            fout.write(json.dumps(data))
-
-        if settings.VERBOSITY >= 2:
-            print("Saved replay:", output_path)
-
-    def iter_replayed_game_tree_history(self):
+    def iter_game_tree_positions(self):
         '''Walk the game tree as if you were replaying the game move by move'''
         node = self.game_tree
         for _, move in self.environment.event_history:
@@ -461,52 +451,17 @@ class MCTSAgent(Agent):
                 break
             node = node.get_child_edge(move).child_node
 
-    def replay_data(self, was_early_stopped):
-        env = self.environment
-        replay = []
-        for game_tree_node, move in self.iter_replayed_game_tree_history():
-            policy_info = []
-            for child_edge in game_tree_node.child_edges:
-                policy_info.append((
-                    child_edge.move,
-                    float(child_edge.prior_probability),
-                    child_edge.visit_count,
-                    child_edge.reward_totals[self.agent_num],
-                ))
+    def record_replay(self, output_dir, was_early_stopped):
+        replay = AgentReplay.from_agent(self, was_early_stopped)
 
-            replay.append(dict(
-                state=game_tree_node.state.marshall(format="dict"),
-                value=game_tree_node.values[self.agent_num],
-                policy_info=policy_info,
-                move=move,
-            ))
-
-        final_state = env.event_history[-1][0]
-        if was_early_stopped:
-            outcome = env.early_stopped_rewards(final_state)
-        else:
-            outcome = env.rewards(final_state)
-
-        data = dict(
-            id=env.id,
-            name=env.get_name(),
-            started_at=env.started_at,
-            ended_at=env.ended_at,
-            agent_nums=list(range(len(env.agents))),
-            agent=dict(
-                agent_num=self.agent_num,
-                species=self.species,
-                generation=self.generation,
-                puct_explore_factor=self.puct_explore_factor,
-                puct_noise_alpha=self.puct_noise_alpha,
-                puct_noise_influence=self.puct_noise_influence,
-                full_search_proportion=self.full_search_proportion,
-                full_search_steps=self.full_search_steps,
-                partial_search_steps=self.partial_search_steps,
-                temperature=self.temperature,
-                require_full_steps=self.require_full_steps,
-            ),
-            outcome=outcome,
-            replay=replay,
-        )
-        return data
+        # Write replay
+        # - mkdir -p replay path if it doesn't exist.
+        game_id = self.environment.id
+        agent_num = self.agent_num
+        output_path = f"{output_dir}/{game_id}-{agent_num}.json"
+        full_path_mkdir_p(output_path)
+        with open(output_path, 'w') as fout:
+            fout.write(json.dumps(replay.marshall()))
+        if settings.VERBOSITY >= 2:
+            print("Saved replay:", output_path)
+        return output_path

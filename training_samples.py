@@ -1,11 +1,11 @@
 from dataclasses import dataclass
 import os
-import json
 from hashlib import md5
 from uuid import uuid4
 
 import numpy
 
+from agent_replay import AgentReplay
 import settings
 
 
@@ -98,23 +98,19 @@ def split_train_test(samples: SampleData, test_fraction):
     return training_sample_data, test_sample_data
 
 
-def extract_policy_labels(move, environment):
+def extract_policy_labels(position, environment):
     '''
     The mcts policy labels are a vector of (move visit_count / total visits) for
     the node that the mcts ran for.
     '''
-    mcts_info = {}
-    total_visits = 0
-    for move, _, visit_count, _ in move["policy_info"]:
-        # move, prior_probability, visit_count, reward_total
-        mcts_info[move] = visit_count
-        total_visits += visit_count
-
+    total_visits = position.edge_visits()
+    actions_considered = position.actions_considered
     policy_labels = []
-    for env_move in environment.all_possible_actions():
-        label = mcts_info.get(env_move, 0.0) / total_visits
+    for action_id in environment.all_possible_actions():
+        ac = actions_considered.get(action_id)
+        action_edge_visits = ac.visit_count if ac else 0.0
+        label = action_edge_visits / total_visits
         policy_labels.append(label)
-
     return policy_labels
 
 
@@ -166,37 +162,29 @@ def is_trainable_policy(
 def samples_from_replay(
     agent_replay,
     feature_extractor,
-    state_class,
     environment,
 ):
-
-    game_bucket = calculate_game_bucket(agent_replay["id"])
-    outcome = agent_replay["outcome"]
-    this_agent_num = agent_replay["agent"]["agent_num"]
-    agent_generation = agent_replay["agent"]["generation"]
-    game_agent_nums = agent_replay["agent_nums"]
-    full_search_steps = agent_replay["agent"]["full_search_steps"]
-    require_full_steps = agent_replay["agent"].get("require_full_steps", True)
-    for move in agent_replay["replay"]:
-        state = state_class.unmarshall(move["state"])
+    game_bucket = calculate_game_bucket(agent_replay.game_id)
+    outcomes = agent_replay.outcomes
+    this_agent_num = agent_replay.agent_settings.agent_num
+    agent_generation = agent_replay.agent_settings.generation
+    game_agent_nums = agent_replay.agent_nums
+    full_search_steps = agent_replay.agent_settings.full_search_steps
+    require_full_steps = agent_replay.agent_settings.require_full_steps
+    for position in agent_replay.positions:
 
         # Only use the moves that this agent played.
         # - We only have policies for these moves
         #   - Only these moves were deeply considered
         # XXX: Ok to not do this? Better way?
-        if state.whose_move != this_agent_num:
+        if position.state.whose_move != this_agent_num:
             continue
 
-        # Get num_visits
-        num_visits = 0
-        for pi in move["policy_info"]:
-            # [move_id, prior_probability, num_visits, sum_rewards]
-            # [ 0, 0.10030386596918106, 0, 0 ]
-            num_visits += pi[2]
-
-        # Early stopped positions do *not* count as terminal.  The last (state,
-        # action) pair for them will have a valid action.
-        is_terminal_position = move["move"] is None
+        # Position attributes
+        # - Early stopped positions do *not* count as terminal.  The last
+        #   (state, action) pair for them will have a valid action.
+        num_visits = position.edge_visits()
+        is_terminal_position = position.is_terminal()
 
         # Check if sample is trainable
         value_trainable = is_trainable_value(
@@ -227,10 +215,10 @@ def samples_from_replay(
         #     understand their value...  Might be good for them to bend parameters
         #     to detect them.
         #   - XXX: Double check that this is the right thing to do.
-        features = feature_extractor(state, game_agent_nums)
+        features = feature_extractor(position.state, game_agent_nums)
         for i, agent_num in enumerate(game_agent_nums):
             agent_features = features[i]
-            value_sample_label = outcome[agent_num]
+            value_sample_label = outcomes[agent_num]
             meta_info = [game_bucket, agent_generation]
 
             # Value sample
@@ -242,7 +230,7 @@ def samples_from_replay(
                 continue
             if not policy_trainable:
                 continue
-            policy_labels = extract_policy_labels(move, environment)
+            policy_labels = extract_policy_labels(position, environment)
             yield "policy", meta_info, agent_features, policy_labels
 
 
@@ -255,7 +243,12 @@ def is_my_task(key, worker_num, num_workers):
     return (fast_deterministic_hash(key) % num_workers) == worker_num
 
 
-def iter_replay_data(replay_directory, worker_num=0, num_workers=1):
+def iter_replay_data(
+    replay_directory,
+    StateClass,
+    worker_num=0,
+    num_workers=1,
+):
     for file_name in os.listdir(replay_directory):
         if not file_name.endswith(".json"):
             continue
@@ -265,7 +258,7 @@ def iter_replay_data(replay_directory, worker_num=0, num_workers=1):
             continue
 
         try:
-            agent_replay = json.loads(open(file_path, 'r').read())
+            agent_replay = AgentReplay.from_path(file_path, StateClass)
         except Exception as e:
             print(f"Exception JSON decoding Replay: {file_name}", e)
             continue
@@ -274,21 +267,25 @@ def iter_replay_data(replay_directory, worker_num=0, num_workers=1):
 
 def generate_training_samples(
     replay_directory,
-    state_class,
+    StateClass,
     feature_extractor,
     environment,
     worker_num=0,
     num_workers=1,
 ):
-    replays_parsed = -1
-    for agent_replay in iter_replay_data(replay_directory, worker_num, num_workers):
-        replays_parsed += 1
+    replays_parsed = 0
+    for agent_replay in iter_replay_data(
+        replay_directory,
+        StateClass,
+        worker_num,
+        num_workers,
+    ):
         if (replays_parsed % 100) == 0:
             print("Replays Parsed:", replays_parsed)
         for sample_type, game_bucket, features, labels in samples_from_replay(
             agent_replay,
             feature_extractor,
-            state_class,
             environment,
         ):
             yield sample_type, game_bucket, features, labels
+        replays_parsed += 1

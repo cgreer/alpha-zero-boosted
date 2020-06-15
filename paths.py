@@ -10,6 +10,11 @@ def full_path_mkdir_p(full_path):
     pathlib.Path(dir_name).mkdir(parents=True, exist_ok=True)
 
 
+def directory_mkdir_p(directory):
+    # :directory shouldn't have trailing slash.
+    pathlib.Path(directory).mkdir(parents=True, exist_ok=True)
+
+
 def generate_tmp_path(key, suffix):
     return f"{TMP_DIRECTORY}/{key}-{uuid4()}.{suffix}"
 
