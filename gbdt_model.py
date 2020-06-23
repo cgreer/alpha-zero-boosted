@@ -7,7 +7,7 @@ import itertools
 import pprint
 import json
 
-from treelite.runtime import (
+from treelite_runtime import (
     Predictor as TreelitePredictor,
 )
 import numpy

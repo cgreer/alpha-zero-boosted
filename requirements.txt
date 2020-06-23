@@ -1,0 +1,6 @@
+rich
+numpy
+lightgbm==2.3.1
+treelite==0.92
+treelite-runtime==0.92
+trueskill==0.4.5
