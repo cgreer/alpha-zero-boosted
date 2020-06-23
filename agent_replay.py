@@ -97,6 +97,7 @@ class AgentSettings:
     partial_search_steps: int
     temperature: float
     require_full_steps: bool
+    revisit_violated_expectations: bool = False
 
     def marshall(self):
         return asdict(self)
@@ -165,6 +166,7 @@ class AgentReplay:
             partial_search_steps=agent.partial_search_steps,
             temperature=agent.temperature,
             require_full_steps=agent.require_full_steps,
+            revisit_violated_expectations=agent.revisit_violated_expectations,
         )
 
         positions = []

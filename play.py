@@ -36,4 +36,5 @@ agent_2 = P2_agent_class(environment=environment, ** p2_agent_settings)
 environment.add_agent(agent_1)
 environment.add_agent(agent_2)
 
+environment.setup()
 environment.run()

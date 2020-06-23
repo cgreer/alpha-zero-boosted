@@ -1,28 +1,91 @@
+from multiprocessing import Pool
 import time
+import traceback
+
 from species import get_species
 from environment_registry import get_env_module
 from paths import build_replay_directory
+from surprise import find_surprises
 
 
 def play_game(
-    environment_name,
+    env_module,
     Agent,
     agent_settings,
     replay_directory=None,
+    reconstruction_info=None,
 ):
-    env_module = get_env_module(environment_name)
+    # Play a game
     environment = env_module.Environment()
 
-    mcts_agent_1 = Agent(environment=environment, **agent_settings)
-    mcts_agent_2 = Agent(environment=environment, **agent_settings)
+    agent_1 = Agent(environment=environment, **agent_settings)
+    agent_2 = Agent(environment=environment, **agent_settings)
 
-    # Play
-    environment.add_agent(mcts_agent_1)
-    environment.add_agent(mcts_agent_2)
-    _, was_early_stopped = environment.run()
+    environment.add_agent(agent_1)
+    environment.add_agent(agent_2)
 
-    mcts_agent_1.record_replay(replay_directory, was_early_stopped)
-    mcts_agent_2.record_replay(replay_directory, was_early_stopped)
+    environment.setup()
+    if reconstruction_info:
+        environment.reconstruct_position(*reconstruction_info)
+    environment.run()
+
+    # Record game replay
+    _, agent_1_replay = agent_1.record_replay(replay_directory)
+    _, agent_2_replay = agent_2.record_replay(replay_directory)
+
+    return (agent_1_replay, agent_2_replay)
+
+
+def self_play_cycle(
+    environment_name,
+    Agent,
+    agent_settings,
+    replay_directory,
+):
+    env_module = get_env_module(environment_name)
+
+    # Play a full game
+    agent_replays = play_game(
+        env_module,
+        Agent,
+        agent_settings,
+        replay_directory=replay_directory,
+    )
+
+    # Replay more games from certain positions (if enabled)
+    if not agent_settings.get("revisit_violated_expectations", False):
+        return
+
+    # Setup revisit settings
+    # XXX: Tune
+    # agent_settings["full_search_proportion"] = 1.0
+    # agent_settings["temperature"] = 1.0
+    num_revisits = 10
+    raw_error_range = [-2.0, -0.50]
+    upstream_turns = 1
+
+    # Run revisits
+    for agent_replay in agent_replays:
+        # Get the position with a highest expectation violation, above a certain
+        # threshold.
+        surprises = find_surprises(
+            agent_replay=agent_replay,
+            raw_error_range=raw_error_range,
+        )
+        if not surprises:
+            continue
+
+        # Play :num_revisits games from a few turns upstream of that position.
+        initial_index = max(surprises[0].initial_position_index - upstream_turns, 0)
+        reconstruction_info = (agent_replay, agent_replay.positions[initial_index])
+        for _ in range(num_revisits):
+            play_game(
+                env_module,
+                Agent,
+                agent_settings,
+                replay_directory=replay_directory,
+                reconstruction_info=reconstruction_info,
+            )
 
 
 def run_worker(args):
@@ -39,12 +102,14 @@ def run_worker(args):
     for i in range(num_games):
         st_time = time.time()
         try:
-            play_game(environment, Agent, agent_settings, replay_directory)
+            self_play_cycle(environment, Agent, agent_settings, replay_directory)
+            # play_game(environment, Agent, agent_settings, replay_directory)
         except Exception as e:
             print("GAME FAILED:", e)
+            traceback.print_exc()
         elapsed = time.time() - st_time
         total_elapsed += elapsed
-        if i % 20 == 0:
+        if i % 10 == 0:
             print(f"GAME {i:05d}: {round(elapsed, 2)} seconds, AVERAGE: {round(total_elapsed / (i + 1), 2)} seconds")
 
     return batch, num_games

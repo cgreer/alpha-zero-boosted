@@ -81,6 +81,7 @@ class MCTSAgent(Agent):
     partial_search_steps: float
     temperature: float = 0.0
     require_full_steps: bool = True
+    revisit_violated_expectations: bool = False
     policy_overrides: List[Dict] = None # [agent_0_overrides, ...]
 
     def __post_init__(self):
@@ -464,4 +465,4 @@ class MCTSAgent(Agent):
             fout.write(json.dumps(replay.marshall()))
         if settings.VERBOSITY >= 2:
             print("Saved replay:", output_path)
-        return output_path
+        return output_path, replay

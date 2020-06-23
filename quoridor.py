@@ -793,6 +793,12 @@ class Environment(environment.Environment):
 
         return "\n".join(rows)
 
+    def reconstruct_position(self, agent_replay, position):
+        return super().reconstruct_position(agent_replay, position)
+
+    def setup(self):
+        return super().setup()
+
     def run(self):
         return super().run()
 

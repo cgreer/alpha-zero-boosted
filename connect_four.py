@@ -304,5 +304,11 @@ class Environment(environment.Environment):
         s += "   0 1 2 3 4 5 6"
         return s
 
+    def reconstruct_position(self, agent_replay, position):
+        return super().reconstruct_position(agent_replay, position)
+
+    def setup(self):
+        return super().setup()
+
     def run(self):
         return super().run()

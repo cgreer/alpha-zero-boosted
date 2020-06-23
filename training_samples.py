@@ -130,6 +130,7 @@ def is_trainable_value(
     is_terminal_position,
     num_visits,
     full_search_steps,
+    partial_search_steps,
     require_full_steps=True,
 ):
     # Terminal positions are valuable even though there are no mcts
@@ -137,6 +138,9 @@ def is_trainable_value(
     if is_terminal_position:
         return True
 
+    # XXX: Tune
+    if num_visits < partial_search_steps:
+        return False
     if require_full_steps:
         if num_visits < full_search_steps:
             return False
@@ -153,6 +157,7 @@ def is_trainable_policy(
     if is_terminal_position:
         return False
 
+    # Policy target is useless without a full consideration.
     if num_visits < full_search_steps:
         return False
 
@@ -170,6 +175,7 @@ def samples_from_replay(
     agent_generation = agent_replay.agent_settings.generation
     game_agent_nums = agent_replay.agent_nums
     full_search_steps = agent_replay.agent_settings.full_search_steps
+    partial_search_steps = agent_replay.agent_settings.partial_search_steps
     require_full_steps = agent_replay.agent_settings.require_full_steps
     for position in agent_replay.positions:
 
@@ -191,6 +197,7 @@ def samples_from_replay(
             is_terminal_position,
             num_visits,
             full_search_steps,
+            partial_search_steps,
             require_full_steps=require_full_steps,
         )
         policy_trainable = is_trainable_policy(

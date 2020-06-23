@@ -38,7 +38,8 @@ def run_game_worker(args):
     environment.add_agent(agent_1)
     environment.add_agent(agent_2)
 
-    outcomes, _ = environment.run()
+    environment.setup()
+    outcomes = environment.run()
 
     return (matchup_info, outcomes)
 
