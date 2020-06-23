@@ -141,6 +141,7 @@ class GBDTModel:
         eval_metrics,
         samples: SampleData,
         test_fraction=.2,
+        categorical_features: List[int] = None,
     ):
         # Make training observations from game posisitions
         train_samples, test_samples = self.extract_training_observations(samples, test_fraction)
@@ -171,6 +172,7 @@ class GBDTModel:
             eval_metrics,
             train_samples,
             test_samples,
+            categorical_features=categorical_features,
         )
 
     def train_from_training_data(
@@ -179,6 +181,7 @@ class GBDTModel:
         eval_metrics,
         train_samples: SampleData,
         test_samples: SampleData,
+        categorical_features: List[int] = None,
     ):
 
         train_data = lightgbm.Dataset(
@@ -201,6 +204,7 @@ class GBDTModel:
         bagging_fractions = [.2]
         bagging_freqs = [10]
         num_leaves_choices = [2**10]
+        min_data_in_leaf_choices = [150]
 
         # bagging_fractions = [.3]
         # bagging_freqs = [20]
@@ -211,11 +215,13 @@ class GBDTModel:
             bagging_freq,
             num_leaves,
             learning_rate,
+            min_data_in_leaf,
         ) in itertools.product(
             bagging_fractions,
             bagging_freqs,
             num_leaves_choices,
             learning_rates,
+            min_data_in_leaf_choices,
         ):
             params = {
                 'objective': objective, # aka xentropy
@@ -227,7 +233,7 @@ class GBDTModel:
                 'learning_rate': learning_rate,  # This is overriden in the case where dynamic learning_rates are specified below
                 'num_leaves': num_leaves,
                 'max_bin': 128,
-                'min_data_in_leaf': 10,
+                'min_data_in_leaf': min_data_in_leaf,
                 'num_threads': 16,  # 0 is as many as CPUs for server
                 'verbose': 1,
                 # 'max_depth': 3,
@@ -240,11 +246,14 @@ class GBDTModel:
             print("\nTraining")
             eval_results = {}
             train_start_time = time.time()
+            categorical_feature = categorical_features if categorical_features else "auto"
+            print(f"Using categorical_feature: {categorical_feature}")
             lightgbm_booster = lightgbm.train(
                 params,
                 train_data,
                 num_round,
                 valid_sets=[train_data, test_data],
+                categorical_feature=categorical_feature,
                 learning_rates=learning_rate_fxn,
                 early_stopping_rounds=early_stopping_rounds, # Stops if ANY metric in metrics doesn't improve in N rounds
                 evals_result=eval_results,

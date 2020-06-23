@@ -261,6 +261,7 @@ class GBDTPolicy(GBDTModel):
             eval_metrics=["cross_entropy", "mae"],
             samples=samples,
             test_fraction=test_fraction,
+            categorical_features=[0], # Allow LGBM to Fischer Info the actions.
         )
 
     def predict(self, agent_features, allowable_actions):
