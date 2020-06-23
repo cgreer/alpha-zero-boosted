@@ -28,3 +28,24 @@ Four, and Tic-Tac-Toe.
 ```python3.7 train_bot.py <environment> <species> <num batches>```
 
 ```python3.7 train_bot.py connect_four gbdt 10```
+
+
+# Setup
+
+## Using pyenv
+```bash
+cd [this directory]
+pyenv install 3.7.7
+pyenv virtualenv 3.7.7 alpha_my_name
+pyenv local alpha_my_name
+pip install -r requirements.txt
+```
+
+### Notes on OSX
+Because some wheels don't appear to be built properly, you may need to first install the following:
+```bash
+brew install libomp
+
+# Try installing again
+pip install -r requirements.txt
+```
