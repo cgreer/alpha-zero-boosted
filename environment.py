@@ -83,12 +83,10 @@ class Environment(ABC):
         pass
 
     @abstractmethod
-    def early_stopped_rewards(self, state):
+    def text_display(self, state):
         pass
 
     @abstractmethod
-    def early_stopping_round(self):
-        pass
     def setup(self):
         # Let agents do any setup
         game_state = self.initial_state()
@@ -96,8 +94,6 @@ class Environment(ABC):
             agent.setup(initial_state=game_state)
 
     @abstractmethod
-    def text_display(self, state):
-        pass
     def reconstruct_position(
         self,
         agent_replay,
@@ -153,13 +149,7 @@ class Environment(ABC):
 
         # Play
         self.started_at = time.time()
-        was_early_stopped = False
-        early_stopping_round = self.early_stopping_round()
         while True:
-            turn_count += 1
-            if early_stopping_round and (turn_count >= early_stopping_round):
-                was_early_stopped = True
-                break
             turn_count = len(self.event_history) + 1
 
             if settings.VERBOSITY >= 1:
@@ -194,13 +184,9 @@ class Environment(ABC):
         # Game Over
         self.ended_at = time.time()
 
-        if was_early_stopped:
-            outcome = self.early_stopped_rewards(game_state)
-        else:
-            outcome = self.rewards(game_state)
-
+        outcome = self.rewards(game_state)
         if settings.VERBOSITY >= 1:
             rprint()
             rprint("Game Over")
             rprint(outcome)
-        return outcome, was_early_stopped
+        return outcome

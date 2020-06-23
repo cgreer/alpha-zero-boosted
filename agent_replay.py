@@ -137,18 +137,14 @@ class AgentReplay:
         return cls(**data)
 
     @classmethod
-    def from_agent(cls, agent, was_early_stopped):
+    def from_agent(cls, agent):
         env = agent.environment
 
         game_id = env.id
         environment_name = env.get_name()
 
-        # XXX: Get rid of early stopping nonsense
         final_state = env.event_history[-1][0]
-        if was_early_stopped:
-            outcomes = env.early_stopped_rewards(final_state)
-        else:
-            outcomes = env.rewards(final_state)
+        outcomes = env.rewards(final_state)
 
         started_at = env.started_at
         ended_at = env.ended_at

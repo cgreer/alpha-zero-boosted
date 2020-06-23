@@ -267,12 +267,6 @@ class Environment(environment.Environment):
         else:
             return (0, 0)
 
-    def early_stopped_rewards(self, state):
-        return None
-
-    def early_stopping_round(self):
-        return None
-
     def text_display(self, state, rich=True):
         '''
         5 . . . . . . .

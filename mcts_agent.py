@@ -452,8 +452,8 @@ class MCTSAgent(Agent):
                 break
             node = node.get_child_edge(move).child_node
 
-    def record_replay(self, output_dir, was_early_stopped):
-        replay = AgentReplay.from_agent(self, was_early_stopped)
+    def record_replay(self, output_dir):
+        replay = AgentReplay.from_agent(self)
 
         # Write replay
         # - mkdir -p replay path if it doesn't exist.

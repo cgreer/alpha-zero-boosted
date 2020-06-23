@@ -11,6 +11,8 @@ import numpy
 
 SPEAK = 0
 
+EARLY_STOPPING_POSITION = 90
+
 
 class BootstrapValue:
     def predict(self, features):
@@ -18,11 +20,11 @@ class BootstrapValue:
         values = []
         for feature_set in features:
             if feature_set[0] < 0.5:
-                your_distance = (8.0 - feature_set[3]) / 8.0
-                opponent_distance = feature_set[5] / 8.0
+                your_distance = (8.0 - feature_set[4]) / 8.0
+                opponent_distance = feature_set[6] / 8.0
             else:
-                your_distance = feature_set[5] / 8.0
-                opponent_distance = (8.0 - feature_set[3]) / 8.0
+                your_distance = feature_set[6] / 8.0
+                opponent_distance = (8.0 - feature_set[4]) / 8.0
             value = (opponent_distance - your_distance) * .25
             values.append(value)
         return values
@@ -315,6 +317,7 @@ def blocking_walls(x1, y1, x2, y2):
 @dataclass
 class State:
     whose_move: int # {0, 1} # Note: 0-based!
+    position_num: int
     p1_x: int
     p1_y: int
     p2_x: int
@@ -349,7 +352,7 @@ def generate_features(state, agents) -> numpy.array:
     # :agents ~ [0, 1, 2]
     # :agents ~ [0, 1, 5]
     # Which player's pov, which player is moving, is POV's player moving?
-    features = numpy.zeros((2, 136), dtype=numpy.float32)
+    features = numpy.zeros((2, 137), dtype=numpy.float32)
 
     agent_0_features = features[0]
     agent_1_features = features[1]
@@ -360,13 +363,14 @@ def generate_features(state, agents) -> numpy.array:
 
     # Agent-shared features
     agent_0_features[1] = state.whose_move
-    agent_0_features[2] = state.p1_x
-    agent_0_features[3] = state.p1_y
-    agent_0_features[4] = state.p2_x
-    agent_0_features[5] = state.p2_y
-    agent_0_features[6] = state.p1_wall_count
-    agent_0_features[7] = state.p2_wall_count
-    i = 8
+    agent_0_features[2] = state.position_num
+    agent_0_features[3] = state.p1_x
+    agent_0_features[4] = state.p1_y
+    agent_0_features[5] = state.p2_x
+    agent_0_features[6] = state.p2_y
+    agent_0_features[7] = state.p1_wall_count
+    agent_0_features[8] = state.p2_wall_count
+    i = 9
     for x in (0, 1, 2, 3, 4, 5, 6, 7):
         for y in (0, 1, 2, 3, 4, 5, 6, 7):
             if state.vertical_wall_states[x][y] == 1:
@@ -376,7 +380,7 @@ def generate_features(state, agents) -> numpy.array:
             i += 1
 
     # Copy over agent-shared features to other agent.
-    agent_1_features[1:136] = agent_0_features[1:136]
+    agent_1_features[1:137] = agent_0_features[1:137]
 
     return features
 
@@ -454,6 +458,7 @@ class Environment(environment.Environment):
     def initial_state(self):
         return State(
             whose_move=0,
+            position_num=0,
             p1_x=4,
             p1_y=0,
             p2_x=4,
@@ -530,6 +535,7 @@ class Environment(environment.Environment):
             # XXX: Technically you don't have to make a copy of the passages/walls.
             return State(
                 whose_move=1 if state.whose_move == 0 else 0,
+                position_num=state.position_num + 1,
                 p1_x=p1_x,
                 p1_y=p1_y,
                 p2_x=p2_x,
@@ -554,6 +560,7 @@ class Environment(environment.Environment):
 
             return State(
                 whose_move=1 if state.whose_move == 0 else 0,
+                position_num=state.position_num + 1,
                 p1_x=state.p1_x,
                 p1_y=state.p1_y,
                 p2_x=state.p2_x,
@@ -570,6 +577,10 @@ class Environment(environment.Environment):
             return True
         elif state.p2_y <= 0:
             return True
+
+        if state.position_num == EARLY_STOPPING_POSITION:
+            return True
+
         return False
 
     def build_action_maps(self):
@@ -705,14 +716,6 @@ class Environment(environment.Environment):
         elif state.p2_y <= 0:
             return [-1, 1]
         return [0, 0]
-
-    def early_stopped_rewards(self, state):
-        # Count as draw
-        # XXX: Better to count as losses?
-        return [0, 0]
-
-    def early_stopping_round(self):
-        return 80
 
     def text_display(self, state):
         '''
