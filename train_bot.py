@@ -106,6 +106,7 @@ def run(
 
 
 if __name__ == "__main__":
+    import sys
     environment, species, num_batches = sys.argv[1:]
     run(environment, species, int(num_batches))
     '''
