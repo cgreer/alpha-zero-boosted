@@ -288,8 +288,10 @@ class GBDTModel:
 
         # Build treelite model
         #  - stash path in self.treelite_model_path
+        print("Selecting annotation samples")
         num_rows = test_samples.features.shape[0]
-        annotation_samples = test_samples.features[numpy.random.choice(num_rows, 500_000), :]
+        annotation_samples = test_samples.features[numpy.random.choice(num_rows, 50_000), :]
+
         print("Building treelite model")
         self.treelite_model_path = build_treelite_model(
             lightgbm_model_path,
