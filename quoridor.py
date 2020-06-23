@@ -93,9 +93,9 @@ def victory_distance(initial_x, initial_y, blocked_passages, winning_row):
     visited[initial_x][initial_y] = True
     queue = [(initial_x, initial_y, 0)]
 
-    # Biased towards going north/south first. Note that the last element is what will be searched
-    # first for the dfs, so for player 1 north is the last element to bias heading in that
-    # direction.
+    # Biased towards going north/south first. Note that the last element is what
+    # will be searched first for the dfs, so for player 1 north is the last
+    # element to bias heading in that direction.
     adjacent_deltas = ((0, 1), (1, 0), (-1, 0), (0, -1))
     if winning_row == 8:
         adjacent_deltas = ((0, -1), (-1, 0), (1, 0), (0, 1))
@@ -124,9 +124,9 @@ def victory_distance_heavy(initial_x, initial_y, blocked_passages, winning_row):
     visited = {(initial_x, initial_y): 0}
     queue = [(initial_x, initial_y, 0)]
 
-    # Biased towards going north/south first. Note that the last element is what will be searched
-    # first for the dfs, so for player 1 north is the last element to bias heading in that
-    # direction.
+    # Biased towards going north/south first. Note that the last element is what
+    # will be searched first for the dfs, so for player 1 north is the last
+    # element to bias heading in that direction.
     adjacent_deltas = ((0, 1), (1, 0), (-1, 0), (0, -1))
     if winning_row == 8:
         adjacent_deltas = ((0, -1), (-1, 0), (1, 0), (0, 1))
@@ -154,9 +154,9 @@ def victory_distance_lighter(initial_x, initial_y, blocked_passages, winning_row
     visited = {(initial_x, initial_y): True}
     queue = [(initial_x, initial_y, 0)]
 
-    # Biased towards going north/south first. Note that the last element is what will be searched
-    # first for the dfs, so for player 1 north is the last element to bias heading in that
-    # direction.
+    # Biased towards going north/south first. Note that the last element is what
+    # will be searched first for the dfs, so for player 1 north is the last
+    # element to bias heading in that direction.
     adjacent_deltas = ((0, 1), (1, 0), (-1, 0), (0, -1))
     if winning_row == 8:
         adjacent_deltas = ((0, -1), (-1, 0), (1, 0), (0, 1))
@@ -191,7 +191,8 @@ def victory_path(initial_x, initial_y, final_x, final_y, visited, blocked_passag
         if (x == initial_x) and (y == initial_y):
             break
 
-        # Find traversable, adjacent square with next shortest distance to origin.
+        # Find traversable, adjacent square with next shortest distance to
+        # origin.
         distance_shortest = 100
         x_shortest = None
         y_shortest = None
@@ -440,14 +441,6 @@ class Environment(environment.Environment):
             if info[0] is not None:
                 continue
             self.action_id_by_wall_info[(info[1], info[2], info[3])] = i
-
-        # Another view of action info used by transition_state
-        # self.num_actions = sum([
-            # len(self.move_action_info),
-            # len(self.jump_action_info),
-            # len(self.vertical_wall_states),
-            # len(self.horizontal_wall_states),
-        # ])
 
     def add_agent(self, agent):
         super().add_agent(agent)

@@ -1,29 +1,31 @@
 import sys
 from collections import defaultdict
-from training_samples import iter_replay_data
+
+from environment_registry import get_env_module
 from train import find_batch_directory
+from training_samples import iter_replay_data
 
 
 def retrieve_move_lists(environment, species, batch_num):
-    raise NotImplementedError() # fix iter replays
+    env_module = get_env_module(environment)
+    replay_directory = find_batch_directory(environment, species, batch_num)
 
     print("\nGetting move lists")
-    replay_directory = find_batch_directory(environment, species, batch_num)
     games = []
     i = 1
     seen_games = set()
-    for replay in iter_replay_data(replay_directory):
+    for replay in iter_replay_data(replay_directory, env_module.State):
         if i % 500 == 0:
             print(f"{i} replays parsed")
         i += 1
 
-        if replay["id"] in seen_games:
+        if replay.game_id in seen_games:
             continue
-        seen_games.add(replay["id"])
+        seen_games.add(replay.game_id)
 
         moves = []
-        for move_info in replay["replay"]:
-            moves.append(move_info["move"])
+        for position in replay.positions:
+            moves.append(position.chosen_action_id)
         games.append(moves)
     return games
 
@@ -43,7 +45,8 @@ def display_diversity(games, max_moves=100):
 
 
 def display_batch_diversity(environment, species, batch_num):
-    display_diversity(retrieve_move_lists(environment, species, batch_num))
+    move_lists = retrieve_move_lists(environment, species, batch_num)
+    display_diversity(move_lists)
 
 
 if __name__ == "__main__":

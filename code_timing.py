@@ -41,69 +41,69 @@ x = 0
 for i in range(BASE_ITERATIONS):
     x += 1
 
-op = "dirichlet.rvs() (scipy frozen distribution, size 9)"
+op_name = "dirichlet.rvs() (scipy frozen distribution, size 9)"
 import scipy.stats # noqa
 d = scipy.stats.dirichlet([.2] * 9)
-with time_operation(op, BASE_ITERATIONS) as op:
+with time_operation(op_name, BASE_ITERATIONS) as op:
     for i in range(op.num_interations):
         d.rvs()
 
 from noise_maker import NoiseMaker # noqa
 NOISE_MAKER = NoiseMaker(1000)
-op = "NOISE_MAKER.make_noise(.2, 10)"
-with time_operation(op, BASE_ITERATIONS) as op:
+op_name = "NOISE_MAKER.make_noise(.2, 10)"
+with time_operation(op_name, BASE_ITERATIONS) as op:
     for i in range(op.num_interations):
         NOISE_MAKER.make_noise(.2, 10)
 
-op = "random.randint(0, 9999)"
-with time_operation(op, BASE_ITERATIONS) as op:
+op_name = "random.randint(0, 9999)"
+with time_operation(op_name, BASE_ITERATIONS) as op:
     for i in range(op.num_interations):
         random.randint(0, 9999)
 
-op = "[0.0 for x in agents]"
+op_name = "[0.0 for x in agents]"
 agents = [0, 1]
-with time_operation(op, BASE_ITERATIONS) as op:
+with time_operation(op_name, BASE_ITERATIONS) as op:
     for i in range(op.num_interations):
         s = [0.0 for x in agents]
 
-op = "[0.0] * len(agents)"
+op_name = "[0.0] * len(agents)"
 agents = [0, 1]
-with time_operation(op, BASE_ITERATIONS) as op:
+with time_operation(op_name, BASE_ITERATIONS) as op:
     for i in range(op.num_interations):
         s = [0.0] * len(agents)
 
-op = "tuple(generator) (10)"
-with time_operation(op, BASE_ITERATIONS) as op:
+op_name = "tuple(generator) (10)"
+with time_operation(op_name, BASE_ITERATIONS) as op:
     for i in range(op.num_interations):
         a = tuple(x for x in range(10))
 
-op = "tuple(appended list) (10)"
-with time_operation(op, BASE_ITERATIONS) as op:
+op_name = "tuple(appended list) (10)"
+with time_operation(op_name, BASE_ITERATIONS) as op:
     for i in range(op.num_interations):
         s = []
         for i in range(10):
             s.append(i)
         a = tuple(s)
 
-op = "enumerate(s) (100)"
+op_name = "enumerate(s) (100)"
 s = list(range(100))
-with time_operation(op, BASE_ITERATIONS) as op:
+with time_operation(op_name, BASE_ITERATIONS) as op:
     for i in range(op.num_interations):
         for i, val in enumerate(s):
             pass
 
-op = "manual enumerate(s) (100)"
+op_name = "manual enumerate(s) (100)"
 s = list(range(100))
-with time_operation(op, BASE_ITERATIONS) as op:
+with time_operation(op_name, BASE_ITERATIONS) as op:
     for i in range(op.num_interations):
         i = 0
         for val in s:
             i += 1
             pass
 
-op = "try/except IndexError:"
+op_name = "try/except IndexError:"
 s = [0]
-with time_operation(op, BASE_ITERATIONS) as op:
+with time_operation(op_name, BASE_ITERATIONS) as op:
     for i in range(op.num_interations):
         try:
             a = s[1]
@@ -111,32 +111,32 @@ with time_operation(op, BASE_ITERATIONS) as op:
             pass
 
 import numpy # noqa
-op = "numpy.random.dirichlet (size 9)"
+op_name = "numpy.random.dirichlet (size 9)"
 noise_alpha = .2
 num_child_edges = 9
-with time_operation(op, BASE_ITERATIONS) as op:
+with time_operation(op_name, BASE_ITERATIONS) as op:
     for i in range(op.num_interations):
         noise = numpy.random.dirichlet([noise_alpha] * num_child_edges)
 
 import math # noqa
-op = "math.sqrt"
-with time_operation(op, BASE_ITERATIONS) as op:
+op_name = "math.sqrt"
+with time_operation(op_name, BASE_ITERATIONS) as op:
     for i in range(op.num_interations):
         math.sqrt(42)
 
-op = "a = s[500] (tuple, 1000)"
+op_name = "a = s[500] (tuple, 1000)"
 s = tuple(range(1000))
-with time_operation(op, BASE_ITERATIONS) as op:
+with time_operation(op_name, BASE_ITERATIONS) as op:
     for i in range(op.num_interations):
         a = s[500]
 
 '''
-op = "quoridor full path"
+op_name = "quoridor full path"
 from quoridor import victory_distance_2 as victory_distance, victory_path # noqa
 blocked_passages = set()
 blocked_passages.add((4, 1, 4, 2))
 blocked_passages.add((4, 2, 4, 1))
-with time_operation(op, BASE_ITERATIONS) as op:
+with time_operation(op_name, BASE_ITERATIONS) as op:
     for i in range(op.num_interations):
         initial_x = 4
         initial_y = 0
@@ -321,72 +321,72 @@ elapsed = time.time() - st_time
 ops_per_sec = BASE_ITERATIONS / elapsed
 operation_info.append(("s.pop, s.append (list, 10)", ops_per_sec))
 
-op = "if s > 0"
+op_name = "if s > 0"
 s = 0
-with time_operation(op, BASE_ITERATIONS) as op:
+with time_operation(op_name, BASE_ITERATIONS) as op:
     for i in range(op.num_interations):
         if s > 0:
             pass
 
-op = "if s == 0"
+op_name = "if s == 0"
 s = 0
-with time_operation(op, BASE_ITERATIONS) as op:
+with time_operation(op_name, BASE_ITERATIONS) as op:
     for i in range(op.num_interations):
         if s == 0:
             pass
 
-op = "[x[:] for x in s] (s is [6][7]int)"
+op_name = "[x[:] for x in s] (s is [6][7]int)"
 s = [[0] * 6 for _ in range(7)]
-with time_operation(op, BASE_ITERATIONS) as op:
+with time_operation(op_name, BASE_ITERATIONS) as op:
     for i in range(op.num_interations):
         a = [x[:] for x in s]
 
-op = "for x in s: append(x[:]) (s is [6][7]int)"
+op_name = "for x in s: append(x[:]) (s is [6][7]int)"
 s = [[0] * 6 for _ in range(7)]
-with time_operation(op, BASE_ITERATIONS) as op:
+with time_operation(op_name, BASE_ITERATIONS) as op:
     for i in range(op.num_interations):
         a = []
         for x in s:
             a.append(x[:])
 
-op = "[copy(x) for x in s] (s is [6][7]int)"
+op_name = "[copy(x) for x in s] (s is [6][7]int)"
 s = [[0] * 6 for _ in range(7)]
-with time_operation(op, BASE_ITERATIONS) as op:
+with time_operation(op_name, BASE_ITERATIONS) as op:
     for i in range(op.num_interations):
         a = [copy(x) for x in s]
 
-op = "deepcopy(s) (s is [6][7]int)"
+op_name = "deepcopy(s) (s is [6][7]int)"
 s = [[0] * 6 for _ in range(7)]
-with time_operation(op, BASE_ITERATIONS) as op:
+with time_operation(op_name, BASE_ITERATIONS) as op:
     for i in range(op.num_interations):
         a = deepcopy(s)
 
-op = "for x in (0, 1, 2, 3, 4, 5, 6)"
-with time_operation(op, BASE_ITERATIONS) as op:
+op_name = "for x in (0, 1, 2, 3, 4, 5, 6)"
+with time_operation(op_name, BASE_ITERATIONS) as op:
     for i in range(op.num_interations):
         for x in (0, 1, 2, 3, 4, 5, 6):
             pass
 
-op = "for x in range(7)"
-with time_operation(op, BASE_ITERATIONS) as op:
+op_name = "for x in range(7)"
+with time_operation(op_name, BASE_ITERATIONS) as op:
     for i in range(op.num_interations):
         for x in range(7):
             pass
 
-op = "numpy.zeros(84, dtype=numpy.float32)"
-with time_operation(op, BASE_ITERATIONS) as op:
+op_name = "numpy.zeros(84, dtype=numpy.float32)"
+with time_operation(op_name, BASE_ITERATIONS) as op:
     for i in range(op.num_interations):
         numpy.zeros(84, dtype=numpy.float32)
 
 s = numpy.zeros(84, dtype=numpy.float32)
-op = "s[40] = 1.0 (numpy float32 array)"
-with time_operation(op, BASE_ITERATIONS) as op:
+op_name = "s[40] = 1.0 (numpy float32 array)"
+with time_operation(op_name, BASE_ITERATIONS) as op:
     for i in range(op.num_interations):
         s[40] = 1.0
 
 s = [0] * 84
-op = "numpy.array([s], dtype=numpy.float32) (s is list, 84 ints)"
-with time_operation(op, BASE_ITERATIONS) as op:
+op_name = "numpy.array([s], dtype=numpy.float32) (s is list, 84 ints)"
+with time_operation(op_name, BASE_ITERATIONS) as op:
     for i in range(op.num_interations):
         numpy.array([s], dtype=numpy.float32)
 
@@ -395,92 +395,92 @@ from treelite_runtime import ( # noqa
 )
 features = [0] * 87 # size of connect feature array
 features = [features, features]
-op = "TreeliteBatch.from_npy2d(numpy.array(features, dtype=numpy.float32))"
-with time_operation(op, BASE_ITERATIONS) as op:
+op_name = "TreeliteBatch.from_npy2d(numpy.array(features, dtype=numpy.float32))"
+with time_operation(op_name, BASE_ITERATIONS) as op:
     for i in range(op.num_interations):
         TreeliteBatch.from_npy2d(numpy.array(features, dtype=numpy.float32))
 
 features = [0] * 87 # size of connect feature array
 features = [features, features]
-op = "TreeliteBatch.from_npy2d(numpy.asarray(features, dtype=numpy.float32))"
-with time_operation(op, BASE_ITERATIONS) as op:
+op_name = "TreeliteBatch.from_npy2d(numpy.asarray(features, dtype=numpy.float32))"
+with time_operation(op_name, BASE_ITERATIONS) as op:
     for i in range(op.num_interations):
         TreeliteBatch.from_npy2d(numpy.asarray(features, dtype=numpy.float32))
 
-op = "b = actions / actions.sum()"
+op_name = "b = actions / actions.sum()"
 actions = numpy.array([.2, .3, .1, 0.5, .1, .2, .2], dtype=numpy.float32)
-with time_operation(op, BASE_ITERATIONS) as op:
+with time_operation(op_name, BASE_ITERATIONS) as op:
     for i in range(op.num_interations):
         b = actions / actions.sum()
 
-op = "b = actions / s (manual sum)"
+op_name = "b = actions / s (manual sum)"
 actions = numpy.array([.2, .3, .1, 0.5, .1, .2, .2], dtype=numpy.float32)
-with time_operation(op, BASE_ITERATIONS) as op:
+with time_operation(op_name, BASE_ITERATIONS) as op:
     for i in range(op.num_interations):
         s = 0.0
         for x in actions:
             s += x
         b = actions / s
 
-op = "a * (1 - .25) (a is numpy.float32)"
+op_name = "a * (1 - .25) (a is numpy.float32)"
 a = numpy.float32(0.6)
 b = numpy.float32(1.0)
 c = numpy.float32(0.25)
-with time_operation(op, BASE_ITERATIONS) as op:
+with time_operation(op_name, BASE_ITERATIONS) as op:
     for i in range(op.num_interations):
         a * (1 - .25)
 
-op = "a * (1 - .25) (a is python float)"
+op_name = "a * (1 - .25) (a is python float)"
 a = 0.6
-with time_operation(op, BASE_ITERATIONS) as op:
+with time_operation(op_name, BASE_ITERATIONS) as op:
     for i in range(op.num_interations):
         a * (1 - .25)
 
-op = "a * (b - c) (a,b,c are numpy.float32)"
+op_name = "a * (b - c) (a,b,c are numpy.float32)"
 a = numpy.float32(0.6)
 b = numpy.float32(1.0)
 c = numpy.float32(0.25)
-with time_operation(op, BASE_ITERATIONS) as op:
+with time_operation(op_name, BASE_ITERATIONS) as op:
     for i in range(op.num_interations):
         a * (b - c)
 
-op = "a * (b - c) (a,b,c are python floats)"
+op_name = "a * (b - c) (a,b,c are python floats)"
 a = 0.6
 b = 1.0
 c = 0.25
-with time_operation(op, BASE_ITERATIONS) as op:
+with time_operation(op_name, BASE_ITERATIONS) as op:
     for i in range(op.num_interations):
         a * (b - c)
 
-op = "b = copy.copy(s)"
+op_name = "b = copy.copy(s)"
 s = set((x, 1, 2, 3) for x in range(180))
-with time_operation(op, BASE_ITERATIONS) as op:
+with time_operation(op_name, BASE_ITERATIONS) as op:
     for i in range(op.num_interations):
         b = copy(s)
 
-op = "b = set(s)"
+op_name = "b = set(s)"
 s = set((x, 1, 2, 3) for x in range(180))
-with time_operation(op, BASE_ITERATIONS) as op:
+with time_operation(op_name, BASE_ITERATIONS) as op:
     for i in range(op.num_interations):
         b = set(s)
 
-op = "if s: (s is {})"
+op_name = "if s: (s is {})"
 s = {}
-with time_operation(op, BASE_ITERATIONS) as op:
+with time_operation(op_name, BASE_ITERATIONS) as op:
     for i in range(op.num_interations):
         if s:
             pass
 
-op = "if s: (s is [])"
+op_name = "if s: (s is [])"
 s = []
-with time_operation(op, BASE_ITERATIONS) as op:
+with time_operation(op_name, BASE_ITERATIONS) as op:
     for i in range(op.num_interations):
         if s:
             pass
 
-op = "if s: (s is None)"
+op_name = "if s: (s is None)"
 s = None
-with time_operation(op, BASE_ITERATIONS) as op:
+with time_operation(op_name, BASE_ITERATIONS) as op:
     for i in range(op.num_interations):
         if s:
             pass
@@ -490,5 +490,5 @@ with time_operation(op, BASE_ITERATIONS) as op:
 # Display all results
 ###############
 # operation_info.sort(key=lambda x: x[1], reverse=True)
-for op, ops_per_sec in operation_info:
-    display_results(op, ops_per_sec)
+for op_name, ops_per_sec in operation_info:
+    display_results(op_name, ops_per_sec)

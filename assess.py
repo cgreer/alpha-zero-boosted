@@ -14,7 +14,7 @@ def run_generation_ladder(
     environment_name,
     species_list, # [(species, low_gen, high_gen), ...]
     num_workers=1,
-    entrants_per_species=8,
+    entrants_per_species=7,
 ):
     bots = []
     for species, lowest_generation, highest_generation in species_list:
