@@ -254,11 +254,13 @@ class AgentReplay:
     ):
         # Setup game
         # - inline import needed for circular dep... XXX: fix
-        from agent_configuration import configure_agent
+        from species import get_species
         env_module = get_env_module(self.environment_name)
         env = env_module.Environment()
 
-        Agent, agent_settings = configure_agent(environment, species, generation, "self_play")
+        sp = get_species(species)
+        Agent = sp.AgentClass
+        agent_settings = sp.agent_settings(environment, generation, play_setting="self_play")
         if agent_setting_overrides:
             for k, v in agent_setting_overrides.items():
                 agent_settings[k] = v

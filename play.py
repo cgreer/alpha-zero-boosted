@@ -1,6 +1,6 @@
 import sys
 from environment_registry import get_env_module
-from agent_configuration import configure_agent
+from species import get_species
 
 # script.py <environment> <p1 bot name> <p2 bot_name>
 # script.py connect_four mcts_naive-6 human
@@ -9,15 +9,12 @@ consideration_time = float(consideration_time)
 
 
 def setup_agent(bot_name, consideration_time):
-    species, generation = bot_name.split("-")
+    species_name, generation = bot_name.split("-")
     generation = int(generation)
 
-    agent_class, agent_settings = configure_agent(
-        environment,
-        species,
-        generation,
-        play_setting="tournament",
-    )
+    species = get_species(species_name)
+    agent_class = species.AgentClass
+    agent_settings = species.agent_settings(environment, generation, play_setting="play")
 
     # Fix the amount of time per move for bots
     if "move_consideration_time" in agent_settings:

@@ -1,8 +1,7 @@
 import time
+from species import get_species
 from environment_registry import get_env_module
 from paths import build_replay_directory
-from multiprocessing import Pool
-from agent_configuration import configure_agent
 
 
 def play_game(
@@ -29,7 +28,10 @@ def play_game(
 def run_worker(args):
     environment, species, generation, num_games, batch = args
 
-    Agent, agent_settings = configure_agent(environment, species, generation, "self_play")
+    sp = get_species(species)
+    Agent = sp.AgentClass
+    agent_settings = sp.agent_settings(environment, generation, play_setting="self_play")
+
     replay_directory = build_replay_directory(environment, species, generation, batch)
     print(f"Self playing, bot: {species}-{generation}, batch: {replay_directory}")
 

@@ -1,11 +1,12 @@
+import shutil
 from multiprocessing import Pool
 import os
 
 import numpy
 
+from species import get_species
 from environment_registry import get_env_module
-from paths import build_model_paths, find_batch_directory
-from intuition_model import NaiveValue, NaivePolicy, GBDTValue, GBDTPolicy
+from paths import build_model_paths, find_batch_directory, build_model_directory
 from training_samples import generate_training_samples, SampleData
 
 
@@ -239,31 +240,11 @@ def run(
         generation,
     )
 
-    # XXX: Put in agent_configuration
-    # Make Species.value_model()
-    if species == "mcts_naive":
-        value_model = NaiveValue()
-        policy_model = NaivePolicy()
-    elif species in (
-        "gbdt",
-        "gbdt_pcr",
-        "gbdt_pcr_v",
-    ):
-        value_model = GBDTValue()
-        policy_model = GBDTPolicy(num_workers=num_workers)
-    elif species in (
-        "gbdt_rg",
-        "gbdt_rg2",
-    ):
-        strat = "rg2" if species == "gbdt_rg2" else "rg"
-        value_model = GBDTValue(
-            weighting_strat=strat,
-            highest_generation=generation - 1,
-        )
-        policy_model = GBDTPolicy(num_workers=num_workers)
-    else:
-        raise KeyError(f"Unknown species: {species}")
+    ts = get_species(species).training_settings(environment, generation)
+    value_model = ts["ValueModel"](**ts["value_model_settings"])
+    policy_model = ts["PolicyModel"](**ts["policy_model_settings"])
 
+    model_directory = build_model_directory(environment, species, generation)
     model_settings = [
         ("value", value_model, value_model_path),
         ("policy", policy_model, policy_model_path),
@@ -275,7 +256,7 @@ def run(
             batches=batch_nums,
             model_type=model_type,
         )
-        model.train(game_samples)
+        training_info = model.train(game_samples)
         model.save(model_path)
         print("Saved model to", model_path)
 

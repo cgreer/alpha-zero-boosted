@@ -9,36 +9,30 @@ import numpy
 from rich import print as rprint
 from trueskill import Rating, quality_1vs1, rate_1vs1
 
-from agent_configuration import configure_agent
+from species import get_species
 from environment_registry import get_env_module
 from paths import full_path_mkdir_p
 from training_samples import fast_deterministic_hash
 
 
 def run_game_worker(args):
-    # :matchup_info ~ [(bot_1_species, bot_1_generation), ...]
-    environment_name, matchup_info = args
+    # :matchup_info ~ [(bot_1_species, bot_1_gen), ...]
+    env_name, matchup_info = args
 
-    env_module = get_env_module(environment_name)
+    env_module = get_env_module(env_name)
     environment = env_module.Environment()
 
-    bot_1_species, bot_1_generation = matchup_info[0]
-    bot_2_species, bot_2_generation = matchup_info[1]
+    bot_1_species, bot_1_gen = matchup_info[0]
+    bot_2_species, bot_2_gen = matchup_info[1]
 
-    Agent1, agent_1_settings = configure_agent(
-        environment_name,
-        bot_1_species,
-        bot_1_generation,
-        play_setting="evaluation",
-    )
+    sp = get_species(bot_1_species)
+    Agent1 = sp.AgentClass
+    agent_1_settings = sp.agent_settings(env_name, bot_1_gen, play_setting="evaluation")
     agent_1 = Agent1(environment=environment, **agent_1_settings)
 
-    Agent2, agent_2_settings = configure_agent(
-        environment_name,
-        bot_2_species,
-        bot_2_generation,
-        play_setting="evaluation",
-    )
+    sp = get_species(bot_2_species)
+    Agent2 = sp.AgentClass
+    agent_2_settings = sp.agent_settings(env_name, bot_2_gen, play_setting="evaluation")
     agent_2 = Agent2(environment=environment, **agent_2_settings)
 
     environment.add_agent(agent_1)

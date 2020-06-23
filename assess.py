@@ -5,7 +5,7 @@ import numpy
 
 from environment_registry import get_env_module
 from evaluation import Bot, Tournament
-from agent_configuration import configure_agent
+from species import get_species
 from paths import build_tournament_results_path
 import settings
 
@@ -22,7 +22,9 @@ def run_generation_ladder(
         generations = [int(round(x)) for x in numpy.linspace(lowest_generation, highest_generation, num_entrants)]
         generations = list(set(generations))
         for i in generations:
-            Agent, agent_settings = configure_agent(environment_name, species, i, "evaluation")
+            sp = get_species(species)
+            Agent = sp.AgentClass
+            agent_settings = sp.agent_settings(environment_name, i, play_setting="evaluation")
             print(f"Adding bot {species}-{i} to tourney")
             bots.append(
                 Bot(
@@ -53,8 +55,8 @@ def run_generation_ladder(
 
 def run_faceoff(
     environment_name,
-    bot_species,
-    bot_generation,
+    species,
+    generation,
     num_rounds,
     num_workers=1,
 ):
@@ -62,11 +64,13 @@ def run_faceoff(
 
     # The bot your testing and the current best bot
     bots = []
-    for i in range(bot_generation - 1, bot_generation + 1):
-        Agent, agent_settings = configure_agent(environment_name, bot_species, i, "evaluation")
+    for i in range(generation - 1, generation + 1):
+        sp = get_species(species)
+        Agent = sp.AgentClass
+        agent_settings = sp.agent_settings(environment_name, i, play_setting="evaluation")
         bots.append(
             Bot(
-                f"{bot_species}-{i}",
+                f"{species}-{i}",
                 Agent,
                 agent_settings,
             )

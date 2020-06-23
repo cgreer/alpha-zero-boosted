@@ -1,8 +1,8 @@
-import sys
 import math
 import time
 
 from self_play import run as run_self_play
+from species import get_species
 from train import run as run_model_training
 from assess import run_faceoff
 from training_info import TrainingInfo, setup_filesystem
@@ -10,40 +10,42 @@ from training_info import TrainingInfo, setup_filesystem
 
 def run(
     environment,
-    species,
+    species_name,
     num_batches,
     num_workers=12,
     adjusted_win_rate_threshold=0.51,
-    games_per_batch=3000,
     num_assessment_games=200,
 ):
     num_faceoff_rounds = math.ceil(num_assessment_games / num_workers) # Will play at least num_workers per round
 
-    training_info = TrainingInfo.load(environment, species)
+    training_info = TrainingInfo.load(environment, species_name)
     final_training_batch = len(training_info.batches) + num_batches
     for _ in range(num_batches):
         current_batch = len(training_info.batches) + 1
         generation_self_play = training_info.current_self_play_generation()
         generation_training = generation_self_play + 1
 
+        species = get_species(species_name)
+
         print(f"\n\nBatch {current_batch} / {final_training_batch}")
-        print(f"environment: {environment}, species: {species}")
+        print(f"environment: {environment}, species: {species_name}")
         print(f"self-play generation: {generation_self_play}")
 
         # Ensure directories are made/etc.
         # - Not sure this actually depends on generation, but maybe it will later.
         setup_filesystem(
             environment,
-            species,
+            species_name,
             generation_self_play,
         )
 
         # Self play another batch
-        print("\n\nSelf Play")
+        games_per_batch = species.self_play_settings(environment, generation_self_play)["num_games"]
+        print(f"\n\nSelf Play ({games_per_batch} cycles)")
         self_play_start_time = time.time()
         run_self_play(
             environment,
-            species,
+            species_name,
             generation_self_play,
             games_per_batch,
             current_batch,
@@ -51,16 +53,16 @@ def run(
         )
         self_play_end_time = time.time()
         elapsed = round(self_play_end_time - self_play_start_time, 1)
-        games_per_sec = round(games_per_batch / elapsed, 1)
+        cycles_per_second = round(games_per_batch / elapsed, 1)
         print(f"\nSelf play finished in {elapsed} seconds")
-        print(f"Games played: {games_per_batch}, games per sec: {games_per_sec}")
+        print(f"Cycles ran: {games_per_batch}, cycles per sec: {cycles_per_second}")
 
         # Train new model
         print("\n\nTraining")
         training_start_time = time.time()
         run_model_training(
             environment,
-            species,
+            species_name,
             generation_training,
             current_batch,
             num_workers,
@@ -74,7 +76,7 @@ def run(
         assessment_start_time = time.time()
         contender_matchup_info = run_faceoff(
             environment,
-            species,
+            species_name,
             generation_training,
             num_rounds=num_faceoff_rounds,
             num_workers=num_workers,
