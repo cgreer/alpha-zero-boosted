@@ -72,7 +72,7 @@ class GBDTValue(GBDTModel):
         samples: SampleData,
         test_fraction=.2,
     ):
-        super().train(
+        return super().train(
             objective="mean_squared_error",
             eval_metrics=["mean_squared_error", "mae"],
             samples=samples,
@@ -256,7 +256,7 @@ class GBDTPolicy(GBDTModel):
         samples: SampleData,
         test_fraction=.2,
     ):
-        super().train(
+        return super().train(
             objective="cross_entropy",
             eval_metrics=["cross_entropy", "mae"],
             samples=samples,

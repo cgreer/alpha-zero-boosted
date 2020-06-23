@@ -23,6 +23,7 @@ VERBOSITY = int(os.getenv("RL_VERBOSE")) if os.getenv("RL_VERBOSE") else 3
 
 ROOT_DATA_DIRECTORY = f"{HOME}/rl_data"
 SYSTEM_STATS_DIRECTORY = f"{HOME}/system_monitoring"
+MONITORING_DB_PATH = f"{HOME}/system_monitoring/monitoring.db"
 TMP_DIRECTORY = "/tmp"
 
 NUM_THREADS = 14

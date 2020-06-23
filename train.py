@@ -257,6 +257,15 @@ def run(
             model_type=model_type,
         )
         training_info = model.train(game_samples)
+
+        # Stash artifacts
+        output_path = f"{model_directory}/{model_type}_model_training_info_{generation:06d}.json"
+        shutil.copyfile(training_info["gbdt_training_info_path"], output_path)
+
+        output_path = f"{model_directory}/{model_type}_model_lightgbm_dump_{generation:06d}.json"
+        shutil.copyfile(training_info["lightgbm_model_dump_path"], output_path)
+
+        # Save model
         model.save(model_path)
         print("Saved model to", model_path)
 

@@ -22,11 +22,11 @@ class BatchInfo:
     generation_trained: int
     assessed_awr: float
 
-    def start_time(self):
-        return self.self_play_start_time
-
-    def end_time(self):
-        return self.assessment_end_time
+    # These are updated after the fact
+    num_games: int = None
+    num_positions: int = None
+    total_mcts_considerations: int = None
+    self_play_cpu_time: int = None
 
     def marshall(self):
         return asdict(self)
@@ -34,6 +34,12 @@ class BatchInfo:
     @classmethod
     def unmarshall(cls, data):
         return cls(**data)
+
+    def start_time(self):
+        return self.self_play_start_time
+
+    def end_time(self):
+        return self.assessment_end_time
 
 
 @dataclass

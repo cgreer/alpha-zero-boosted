@@ -227,6 +227,18 @@ class AgentReplay:
             if position.state.whose_move == self.agent_settings.agent_num:
                 yield position
 
+    def total_mcts_considerations(self):
+        '''
+        for every position that I was considering (my turn):
+            what is the sum(edge_visits)
+        '''
+        total = 0
+        for position in self.positions:
+            if position.state.whose_move != self.agent_settings.agent_num:
+                continue
+            total += position.edge_visits()
+        return total
+
     def play_cli_video(
         self,
         initial_position_index,

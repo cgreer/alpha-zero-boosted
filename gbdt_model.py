@@ -1,5 +1,10 @@
-import typing
-from dataclasses import dataclass
+import time
+from typing import (
+    Any,
+    Dict,
+    List,
+)
+from dataclasses import dataclass, asdict
 import shutil
 import settings
 from uuid import uuid4
@@ -18,9 +23,96 @@ from training_samples import SampleData
 
 
 @dataclass
+class EvalStat:
+    dataset: str
+    metric: str
+    iteration: int
+    value: float
+
+    def marshall(self):
+        return asdict(self)
+
+    @classmethod
+    def unmarshall(cls, data):
+        return cls(**data)
+
+
+@dataclass
+class GBDTTrainingInfo:
+    settings: Dict[str, Any]
+    train_start_time: float
+    train_end_time: float
+    best_iteration: int
+    dataset_sizes: List[int]
+    eval_stats: List[EvalStat]
+
+    def marshall(self):
+        data = dict(
+            settings=self.settings,
+            train_start_time=self.train_start_time,
+            train_end_time=self.train_end_time,
+            best_iteration=self.best_iteration,
+            dataset_sizes=self.dataset_sizes,
+            eval_stats=[x.marshall() for x in self.eval_stats],
+        )
+        return data
+
+    @classmethod
+    def unmarshall(cls, data):
+        data["eval_stats"] = [EvalStat.unmarshall(x) for x in data["eval_stats"]]
+        return cls(**data)
+
+    def save(self, output_path):
+        with open(output_path, 'w') as f:
+            f.write(json.dumps(self.marshall()))
+
+    @classmethod
+    def load(cls, info_path):
+        data = json.loads(open(info_path, 'r').read())
+        return cls.unmarshall(data)
+
+    @classmethod
+    def from_lgbm_info(
+        cls,
+        settings,
+        booster,
+        eval_results,
+        dataset_sizes,
+        train_start_time,
+        train_end_time,
+    ):
+        '''
+        XXX: write unpack_nested script
+        for dataset_name, metric_name, metric_values in unpack_nested(eval_results):
+            for i, metric_value in enumerate(metric_values):
+                # do something
+        '''
+        eval_stats = []
+        for dataset_name in eval_results:
+            for metric_name in eval_results[dataset_name]:
+                for i, metric_value in enumerate(eval_results[dataset_name][metric_name]):
+                    eval_stats.append(
+                        EvalStat(
+                            dataset=dataset_name,
+                            metric=metric_name,
+                            iteration=i,
+                            value=metric_value,
+                        )
+                    )
+        return cls(
+            settings=settings,
+            train_start_time=train_start_time,
+            train_end_time=train_end_time,
+            best_iteration=booster.best_iteration,
+            dataset_sizes=dataset_sizes,
+            eval_stats=eval_stats,
+        )
+
+
+@dataclass
 class GBDTModel:
-    treelite_model_path: typing.Any = None
-    treelite_predictor: typing.Any = None
+    treelite_model_path: Any = None
+    treelite_predictor: Any = None
 
     def save(self, output_path):
         if self.treelite_model_path is None:
@@ -74,7 +166,7 @@ class GBDTModel:
         test_samples.stash_data()
 
         # Train lgbm model/treelite model
-        self.train_from_training_data(
+        return self.train_from_training_data(
             objective,
             eval_metrics,
             train_samples,
@@ -146,6 +238,8 @@ class GBDTModel:
             # learning_rate_fxn=lambda x: (lr - lrs) + (lrs * (lrsh ** x)),  # Start with a higher learning rate and adjust lower over time
 
             print("\nTraining")
+            eval_results = {}
+            train_start_time = time.time()
             lightgbm_booster = lightgbm.train(
                 params,
                 train_data,
@@ -153,10 +247,24 @@ class GBDTModel:
                 valid_sets=[train_data, test_data],
                 learning_rates=learning_rate_fxn,
                 early_stopping_rounds=early_stopping_rounds, # Stops if ANY metric in metrics doesn't improve in N rounds
+                evals_result=eval_results,
             )
+            train_end_time = time.time()
 
             print("\nTrained with following params:")
             pprint.pprint(params)
+
+        gbdt_training_info_path = f"{settings.TMP_DIRECTORY}/gbdt_train_info-{str(uuid4())}.json"
+        training_info = GBDTTrainingInfo.from_lgbm_info(
+            settings=params,
+            booster=lightgbm_booster,
+            eval_results=eval_results,
+            dataset_sizes=[train_data.num_data(), test_data.num_data()],
+            train_start_time=train_start_time,
+            train_end_time=train_end_time,
+        )
+        training_info.save(gbdt_training_info_path)
+        print("Dumped GBDT TrainingInfo here:", gbdt_training_info_path)
 
         # Save lightgbm model to disk so treelite can load it
         lightgbm_model_path = f"{settings.TMP_DIRECTORY}/lightgbm-{str(uuid4())}.model"
@@ -173,6 +281,7 @@ class GBDTModel:
         #  - stash path in self.treelite_model_path
         num_rows = test_samples.features.shape[0]
         annotation_samples = test_samples.features[numpy.random.choice(num_rows, 500_000), :]
+        print("Building treelite model")
         self.treelite_model_path = build_treelite_model(
             lightgbm_model_path,
             annotation_samples=annotation_samples,
@@ -180,3 +289,10 @@ class GBDTModel:
 
         # Load up the just-made treelite model for use
         self.load(self.treelite_model_path)
+
+        return dict(
+            gbdt_training_info_path=gbdt_training_info_path,
+            lightgbm_model_path=lightgbm_model_path,
+            lightgbm_model_dump_path=lightgbm_model_dump_path,
+            treelite_model_path=self.treelite_model_path,
+        )
