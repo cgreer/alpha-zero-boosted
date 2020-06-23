@@ -390,7 +390,7 @@ with time_operation(op, BASE_ITERATIONS) as op:
     for i in range(op.num_interations):
         numpy.array([s], dtype=numpy.float32)
 
-from treelite.runtime import ( # noqa
+from treelite_runtime import ( # noqa
     Batch as TreeliteBatch,
 )
 features = [0] * 87 # size of connect feature array

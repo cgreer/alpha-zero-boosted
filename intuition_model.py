@@ -6,7 +6,7 @@ import random
 from multiprocessing import Pool
 
 import numpy
-from treelite.runtime import (
+from treelite_runtime import (
     Batch as TreeliteBatch,
 )
 
