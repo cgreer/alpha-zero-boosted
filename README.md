@@ -26,7 +26,7 @@ A few environments (i.e., games) are implemented: Quoridor, Connect Four, and Ti
 
 ```python3.7 train_bot.py connect_four gbdt 10```
 
-   
+
 <br />
 
 # Setup
@@ -52,7 +52,7 @@ Install packages:
 
 ```pip install -r requirements.txt```
 
-*MacOS Issue: Because some wheels don't appear to be built properly, you may need to first install the libomp first and then retry installing packages:*
+*MacOS Issue: Because some wheels don't appear to be built properly, you may need to first install libomp first and then retry installing packages:*
 
 ```bash
 brew install libomp
@@ -63,10 +63,11 @@ pip install -r requirements.txt
 
 
 ## Install pyenv/pyenv-virtualenv
-        
+
 ### pyenv
 
 Install the plugin:
+
 ```brew install pyenv```
 
 
@@ -75,6 +76,7 @@ Install the plugin:
 *Note: These instructions are copied here for convenience. Check [pyenv-virtualenv](https://github.com/pyenv/pyenv-virtualenv#installing-with-homebrew-for-macos-users) to ensure they are up to date.*
 
 Install the plugin:
+
 ```brew install pyenv-virtualenv```
 
 Add the following two lines to your profile file (~/.zprofile if using zsh, ~/.bash_profile if bash):
