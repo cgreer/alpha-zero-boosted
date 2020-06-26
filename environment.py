@@ -20,7 +20,6 @@ class Environment(ABC):
     ended_at: float = field(init=False)
     random_seed: int = field(init=False)
 
-    @abstractmethod
     def __post_init__(self):
         self.id = str(uuid.uuid4())
         self.agents = []
@@ -37,7 +36,6 @@ class Environment(ABC):
         # Uncomment this to make games always play the same way for timing tests.
         # numpy.random.seed(1838298)
 
-    @abstractmethod
     def add_agent(self, agent):
         self.agents.append(agent)
         agent.set_agent_num(len(self.agents) - 1)
@@ -86,14 +84,12 @@ class Environment(ABC):
     def text_display(self, state):
         pass
 
-    @abstractmethod
     def setup(self):
         # Let agents do any setup
         game_state = self.initial_state()
         for agent in self.agents:
             agent.setup(initial_state=game_state)
 
-    @abstractmethod
     def reconstruct_position(
         self,
         agent_replay,
@@ -134,7 +130,6 @@ class Environment(ABC):
             for agent in self.agents:
                 agent.handle_move(chosen_action_id, game_state)
 
-    @abstractmethod
     def run(self):
 
         # Unless the game was reconstructed, start from initial state.

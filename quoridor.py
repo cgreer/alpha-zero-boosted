@@ -442,9 +442,6 @@ class Environment(environment.Environment):
                 continue
             self.action_id_by_wall_info[(info[1], info[2], info[3])] = i
 
-    def add_agent(self, agent):
-        super().add_agent(agent)
-
     def get_name(self):
         return "quoridor"
 
@@ -788,15 +785,6 @@ class Environment(environment.Environment):
         rows.append("".join(x_labels))
 
         return "\n".join(rows)
-
-    def reconstruct_position(self, agent_replay, position):
-        return super().reconstruct_position(agent_replay, position)
-
-    def setup(self):
-        return super().setup()
-
-    def run(self):
-        return super().run()
 
 
 def inspect_victory_path():

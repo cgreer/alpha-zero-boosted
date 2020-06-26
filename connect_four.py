@@ -87,9 +87,6 @@ class Environment(environment.Environment):
         self.checks_by_position = self.calculate_adjacent_checks()
         _, self.action_name_by_id = self.build_action_maps()
 
-    def add_agent(self, agent):
-        super().add_agent(agent)
-
     def get_name(self):
         return "connect_four"
 
@@ -297,12 +294,3 @@ class Environment(environment.Environment):
             s += row + "\n"
         s += "   0 1 2 3 4 5 6"
         return s
-
-    def reconstruct_position(self, agent_replay, position):
-        return super().reconstruct_position(agent_replay, position)
-
-    def setup(self):
-        return super().setup()
-
-    def run(self):
-        return super().run()
