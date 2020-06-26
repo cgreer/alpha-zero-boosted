@@ -5,3 +5,4 @@ __pycache*
 *.npy
 adhoc.py
 scratch.txt
+.python-version
