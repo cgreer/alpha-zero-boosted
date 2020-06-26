@@ -33,7 +33,7 @@ A few environments (i.e., games) are implemented: Quoridor, Connect Four, and Ti
 
 ## Install
 
-*If you haven't already, install pyenv/pyenv-virtualenv (see "Install pyenv/pyenv-virtualenv" below)*
+*If you haven't already, install pyenv/pyenv-virtualenv (see [Install pyenv/pyenv-virtualenv](https://github.com/cgreer/alpha-zero-boosted/blob/master/README.md#install-pyenvpyenv-virutalenv) below)*
 
 Clone repo:
 
@@ -62,7 +62,7 @@ pip install -r requirements.txt
 ```
 
 
-## Install pyenv/pyenv-virutalenv
+## Install pyenv/pyenv-virtualenv
         
 ### pyenv
 
