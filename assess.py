@@ -50,6 +50,7 @@ def run_generation_ladder(
     for i in range(300):
         tournament.ladder(num_rounds=1, num_workers=num_workers)
         tournament.display_results()
+        print(f"\nTournament id: {tournament_key}")
         tournament.save_results(results_path)
 
 
