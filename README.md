@@ -36,12 +36,10 @@ Four, and Tic-Tac-Toe.
 
 # Setup
 
-<br />
-
-### Installing
+## Install
 
 Install pyenv/pyenv-virtualenv (if you haven't already)
-- See "Installing pyenv/pyenv-virutalenv" below
+- See "Install pyenv/pyenv-virutalenv" below
 
 Clone repo
 
@@ -71,13 +69,15 @@ pip install -r requirements.txt
 
 <br />
 
-### Installing pyenv/pyenv-virutalenv
+## Install pyenv/pyenv-virutalenv
         
-**Installing pyenv**
+### Install pyenv
 
 ```brew install pyenv```
 
-**Install pyenv-virtualenv plugin**
+
+### Install pyenv-virtualenv plugin
+
 Note:
 - These instructions are copied here for convenience, check [pyenv-virtualenv](https://github.com/pyenv/pyenv-virtualenv#installing-with-homebrew-for-macos-users) to ensure they are up to date
 
