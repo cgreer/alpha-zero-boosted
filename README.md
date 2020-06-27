@@ -39,7 +39,7 @@ Clone repo:
 
 ```git clone git@github.com:cgreer/alpha-zero-boosted.git```
 
-Create virtual environment for project:
+Create a virtual environment for the project:
 
 ```bash
 cd alpha-zero-boosted
@@ -52,7 +52,7 @@ Install packages:
 
 ```pip install -r requirements.txt```
 
-*MacOS Issue: Because some wheels don't appear to be built properly, you may need to first install libomp first and then retry installing packages:*
+*MacOS Issue: Because some wheels don't appear to be built properly, you may need to first install libomp and then retry installing packages:*
 
 ```bash
 brew install libomp
