@@ -6,9 +6,8 @@ from mcts_agent import MCTSAgent
 from environment_registry import get_env_module
 import intuition_model
 from paths import build_model_paths
+import settings
 
-
-NUM_WORKERS = 12
 
 SPECIES_REGISTRY = set()
 
@@ -108,7 +107,7 @@ class GBDT(Species):
             # Value model settings for reweighting
             # dict(weighting_strat=strat, highest_generation=generation - 1)
             PolicyModel=intuition_model.GBDTPolicy,
-            policy_model_settings=dict(num_workers=NUM_WORKERS),
+            policy_model_settings=dict(num_workers=settings.GBDT_TRAINING_THREADS),
         )
 SPECIES_REGISTRY.add(GBDT) # noqa
 
