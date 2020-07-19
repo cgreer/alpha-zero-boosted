@@ -1,7 +1,10 @@
 import os
+import platform
+import psutil
 from pathlib import Path
 
 HOME = str(Path.home())
+OS_PLATFORM = platform.system()
 
 '''
 0
@@ -26,7 +29,23 @@ SYSTEM_STATS_DIRECTORY = f"{HOME}/system_monitoring"
 MONITORING_DB_PATH = f"{HOME}/system_monitoring/monitoring.db"
 TMP_DIRECTORY = "/tmp"
 
-NUM_THREADS = 14
-NUM_CORES = 14
+NUM_CORES = psutil.cpu_count()
 
-TOOL_CHAIN = "clang" # Will need to change this for linux/windows
+SELF_PLAY_THREADS = NUM_CORES
+GBDT_TRAINING_THREADS = NUM_CORES
+TREELITE_THREADS = NUM_CORES
+ASSESSMENT_THREADS = NUM_CORES
+
+
+'''
+TOOL_CHAIN used by treelite to compile tree
+mac/os: clang
+linux: gcc
+windows: ?
+'''
+if OS_PLATFORM == "Darwin":
+    TOOL_CHAIN = "clang"
+elif OS_PLATFORM == "Linux":
+    TOOL_CHAIN = "gcc"
+else:
+    raise KeyError(f"Unhandled platform: {OS_PLATFORM}")

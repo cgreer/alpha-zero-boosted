@@ -1,6 +1,8 @@
 import math
 import time
 
+
+import settings
 from self_play import run as run_self_play
 from species import get_species
 from train import run as run_model_training
@@ -12,8 +14,8 @@ def run(
     environment,
     species_name,
     num_batches,
-    num_workers=12,
-    adjusted_win_rate_threshold=0.51,
+    num_workers=settings.SELF_PLAY_THREADS,
+    adjusted_win_rate_threshold=0.50,
     num_assessment_games=200,
 ):
     num_faceoff_rounds = math.ceil(num_assessment_games / num_workers) # Will play at least num_workers per round

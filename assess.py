@@ -102,5 +102,5 @@ if __name__ == "__main__":
     run_generation_ladder(
         environment_name=sys.argv[1],
         species_list=species_list,
-        num_workers=settings.NUM_CORES,
+        num_workers=settings.ASSESSMENT_THREADS,
     )

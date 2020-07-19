@@ -2,7 +2,7 @@ import os
 from uuid import uuid4
 import pathlib
 
-from settings import ROOT_DATA_DIRECTORY, TMP_DIRECTORY
+from settings import ROOT_DATA_DIRECTORY, TMP_DIRECTORY, TOOL_CHAIN
 
 
 def full_path_mkdir_p(full_path):
@@ -62,7 +62,12 @@ def build_model_paths(environment, species, generation):
     # XXX VOMIT! Abstract this out.
     suffix = "model"
     if "gbdt" in species:
-        suffix = "dylib"
+        if TOOL_CHAIN == "clang":
+            suffix = "dylib"
+        elif TOOL_CHAIN == "gcc":
+            suffix = "so"
+        else:
+            raise KeyError(f"Unsure about suffix for tool chain: {TOOL_CHAIN}")
     base = build_model_directory(environment, species, generation)
     value_basename = f"value_model_{generation:06d}.{suffix}"
     policy_basename = f"policy_model_{generation:06d}.{suffix}"

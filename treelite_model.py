@@ -58,7 +58,7 @@ def build_treelite_model(
     # Compile model to C/C++
     print("Compiling Tree")
     params = dict(
-        parallel_comp=settings.NUM_THREADS,
+        parallel_comp=settings.TREELITE_THREADS,
         # quantize=1, # Supposed to speed up predictions. Didn't when I tried it.
     )
     if annotation_results_path is not None:
