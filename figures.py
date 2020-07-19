@@ -285,6 +285,70 @@ def training_efficiency_figure(
         plt.show()
 
 
+class GenerationTimings:
+
+    def build(self, *args):
+        data = self.collect_figure_data(*args)
+        self.build_figure(data)
+
+    def collect_figure_data(
+        self,
+        environment: str,
+        species_list: List[str],
+    ):
+        data = [] # (species, training_time, generation_number)
+        # Update all the batch info that needs to be updated
+        for species in species_list:
+            training_info = TrainingInfo.load(environment, species)
+            training_info.update_batch_stats()
+
+            for generation in range(1, training_info.current_self_play_generation()):
+                gen_info = GenerationInfo.from_generation_info(
+                    environment,
+                    species,
+                    generation,
+                )
+
+                data.append((species, gen_info.cpu_seconds_to_train, generation))
+
+        return data
+
+    def build_figure(self, data):
+
+        by_series = group_by(
+            data,
+            key_fxn=lambda x: x[0],
+            values_fxn=lambda x: (x[1], x[2]),
+        )
+
+        # Setup figure
+        style = "bmh"
+        with plt.style.context(style):
+            fig, ax = plt.subplots()  # Create a figure and an axes.
+            for series_key, dps in by_series.items():
+                x = [x[0] for x in dps]
+                y = [x[1] for x in dps]
+
+                # ax.plot(x, y, 'o-', label=series_key)  # Plot some data on the axes.
+                ax.errorbar(
+                    x,
+                    y,
+                    fmt='o-',
+                    yerr=0,
+                    capsize=0,
+                    label=series_key,
+                )
+
+            # Annotate figure
+            # ax.set_xlabel('CPU-Hours')  # Add an x-label to the axes.
+            ax.set_title("Self-play Times")  # Add a title to the axes.
+            ax.set_xlabel('Time')  # Add an x-label to the axes.
+            ax.set_ylabel('Generation')  # Add a y-label to the axes.
+            ax.legend()  # Add a legend.
+            plt.grid(True)
+            plt.show()
+
+
 if __name__ == "__main__":
     import sys
     command = sys.argv[1]
@@ -298,3 +362,8 @@ if __name__ == "__main__":
         for species in species_list_str.split(','):
             figure_data.extend(collate_generation_loss(environment, species))
         generation_loss_figure(figure_data)
+    elif command == "generation_timing":
+        environment, species_list_str = sys.argv[2:]
+        species_list = species_list_str.split(',')
+        fig = GenerationTimings()
+        fig.build(environment, species_list)
