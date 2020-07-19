@@ -138,9 +138,20 @@ def is_trainable_value(
     if is_terminal_position:
         return True
 
-    # XXX: Tune
+    # Don't take positions that have no considerations. An example of these are
+    # the positions that were reconstructed before playing more games from a
+    # position.
+    # XXX: Test. It might be advantageous to take these too.
     if num_visits < partial_search_steps:
         return False
+
+    # Only take positions if a full consideration was performed.
+    # - Unlike alpha zero, this implementation has decoupled value/policy
+    # models. I think the KataGo implementation had to only take the samples
+    # that had full mcts considerations because the value sample was coupled to
+    # the policy sample, but it might be advantageous to take all the value
+    # samples when not under that constraint.
+    # XXX: Test. It might be advantageous to take these too.
     if require_full_steps:
         if num_visits < full_search_steps:
             return False
