@@ -162,39 +162,28 @@ SPECIES_REGISTRY.add(PCRP1) # noqa
 
 
 @dataclass
-class PCRP2(GBDT):
-    name: str = "gbdt_pcrp2"
-
-    def agent_settings(self, environment, generation, play_setting):
-        sets = super().agent_settings(environment, generation, play_setting)
-        if play_setting == "self_play":
-            sets["full_search_proportion"] = .2
-        return sets
-SPECIES_REGISTRY.add(PCRP2) # noqa
-
-
-@dataclass
-class PCRP3(GBDT):
-    name: str = "gbdt_pcrp3"
-
-    def agent_settings(self, environment, generation, play_setting):
-        sets = super().agent_settings(environment, generation, play_setting)
-        if play_setting == "self_play":
-            sets["full_search_proportion"] = .3
-        return sets
-SPECIES_REGISTRY.add(PCRP3) # noqa
-
-
-@dataclass
 class PCRV(GBDT):
     name: str = "gbdt_pcrv"
 
     def agent_settings(self, environment, generation, play_setting):
         sets = super().agent_settings(environment, generation, play_setting)
-        sets["full_search_proportion"] = .2
         sets["require_full_steps"] = False
+        if play_setting == "self_play":
+            sets["full_search_proportion"] = .2
         return sets
 SPECIES_REGISTRY.add(PCRV) # noqa
+
+
+@dataclass
+class PCRVR1(PCRV):
+    name: str = "gbdt_pcrvR1"
+SPECIES_REGISTRY.add(PCRVR1) # noqa
+
+
+@dataclass
+class PCRVR2(PCRV):
+    name: str = "gbdt_pcrvR2"
+SPECIES_REGISTRY.add(PCRVR2) # noqa
 
 
 @dataclass
@@ -211,7 +200,7 @@ class RVE(GBDT):
 
     def self_play_settings(self, environment, generation):
         sps = super().self_play_settings(environment, generation)
-        sps["num_games"] = 300
+        sps["num_games"] = 900
         return sps
 SPECIES_REGISTRY.add(RVE) # noqa
 
@@ -220,6 +209,12 @@ SPECIES_REGISTRY.add(RVE) # noqa
 class RVER1(RVE):
     name: str = "gbdt_rveR1"
 SPECIES_REGISTRY.add(RVER1) # noqa
+
+
+@dataclass
+class RVER2(RVE):
+    name: str = "gbdt_rveR2"
+SPECIES_REGISTRY.add(RVER2) # noqa
 
 
 SPECIES_BY_NAME = {}
