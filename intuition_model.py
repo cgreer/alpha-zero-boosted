@@ -3,7 +3,7 @@ from dataclasses import dataclass
 import json
 import typing
 import random
-from multiprocessing import Pool, set_start_method
+from multiprocessing import Pool
 
 import numpy
 from treelite_runtime import (
@@ -13,9 +13,6 @@ from treelite_runtime import (
 from training_samples import split_train_test, SampleData
 from gbdt_model import GBDTModel
 from paths import generate_tmp_path
-
-# - https://pythonspeed.com/articles/python-multiprocessing/
-set_start_method("spawn")
 
 
 class UnopinionatedValue:

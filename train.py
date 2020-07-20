@@ -1,5 +1,5 @@
 import shutil
-from multiprocessing import Pool, set_start_method
+from multiprocessing import Pool
 import os
 
 import numpy
@@ -8,9 +8,6 @@ from species import get_species
 from environment_registry import get_env_module
 from paths import build_model_paths, find_batch_directory, build_model_directory
 from training_samples import generate_training_samples, SampleData
-
-# - https://pythonspeed.com/articles/python-multiprocessing/
-set_start_method("spawn")
 
 
 def run_worker(args):
