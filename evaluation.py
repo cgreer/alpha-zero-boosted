@@ -3,7 +3,7 @@ from itertools import combinations
 import json
 import random
 import typing
-from multiprocessing import Pool
+from multiprocessing import Pool, set_start_method
 
 import numpy
 from rich import print as rprint
@@ -13,6 +13,9 @@ from species import get_species
 from environment_registry import get_env_module
 from paths import full_path_mkdir_p
 from training_samples import fast_deterministic_hash
+
+# - https://pythonspeed.com/articles/python-multiprocessing/
+set_start_method("spawn")
 
 
 def run_game_worker(args):

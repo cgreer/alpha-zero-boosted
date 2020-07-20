@@ -234,7 +234,7 @@ class GBDTModel:
                 'num_leaves': num_leaves,
                 'max_bin': 128,
                 'min_data_in_leaf': min_data_in_leaf,
-                'num_threads': settings.GBDT_TRAINING_THREADS,  # 0 is as many as CPUs for server
+                'num_threads': settings.LIGHTGBM_THREADS,  # 0 is as many as CPUs for server
                 'verbose': 1,
                 # 'max_depth': 3,
                 # 'min_gain_to_split': 0.01,

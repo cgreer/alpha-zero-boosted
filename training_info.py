@@ -1,7 +1,7 @@
 import os
 from dataclasses import dataclass, asdict, astuple
 import json
-from multiprocessing import Pool
+from multiprocessing import Pool, set_start_method
 import pathlib
 from typing import (
     List,
@@ -15,6 +15,9 @@ from environment_registry import get_env_module
 from paths import find_batch_directory
 from system_monitoring import SystemMonitor
 from training_samples import iter_replay_data
+
+# - https://pythonspeed.com/articles/python-multiprocessing/
+set_start_method("spawn")
 
 
 @dataclass

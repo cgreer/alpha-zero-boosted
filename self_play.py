@@ -1,4 +1,4 @@
-from multiprocessing import Pool
+from multiprocessing import Pool, set_start_method
 import time
 import traceback
 
@@ -6,6 +6,9 @@ from species import get_species
 from environment_registry import get_env_module
 from paths import build_replay_directory
 from surprise import find_surprises
+
+# - https://pythonspeed.com/articles/python-multiprocessing/
+set_start_method("spawn")
 
 
 def play_game(
